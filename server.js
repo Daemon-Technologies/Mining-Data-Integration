@@ -135,7 +135,7 @@ app.get('/snapshotIntegrate', (req, res) => {
           console.error(err)
       }
       else{
-          console.log(body)
+          //console.log(body)
           resolve(JSON.parse(body))
       }
     })
@@ -148,7 +148,7 @@ app.get('/snapshotIntegrate', (req, res) => {
           console.error(err)
       }
       else{
-          console.log(body)
+          //console.log(body)
           resolve(JSON.parse(body))
       }
     })
@@ -193,7 +193,9 @@ app.get('/snapshotIntegrate', (req, res) => {
       // https://blockchain.info/rawblock/ + latestBlock.hash
       // snapshot.winning_block_txid
       return new Promise ((resolve, reject)=>{
-        console.log("这里：", latestBlock.hash, snapshot[-1].winning_block_txid)
+        
+        console.log("这里：", latestBlock.hash)
+        console.log(snapshot.slice(-1)[0].winning_block_txid)
         request.get(requestList[2]+latestBlock.hash, function (err, response, body) {
           if (err) {
               console.error(err)
@@ -203,8 +205,8 @@ app.get('/snapshotIntegrate', (req, res) => {
               let index = -1
               //console.log(rawBlock)
               for (let item in rawBlock.tx){
-                //console.log(item)
-                if (rawBlock.tx[item].hash == snapshot[-1].winning_block_txid){
+                
+                if (rawBlock.tx[item].hash == snapshot.slice(-1)[0].winning_block_txid){
                     index = item
                     console.log("找到了：", item)
                 }

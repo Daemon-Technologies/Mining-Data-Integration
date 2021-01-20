@@ -129,18 +129,19 @@ app.get('/snapshot', (req, res) => {
 
 app.get('/snapshotIntegrate', (req, res) => {
   let requestList = ['http://47.242.239.96:8889/snapshot', 'https://blockchain.info/latestblock', 'https://blockchain.info/rawblock/']
+  console.log(`requestSnapshot ${requestList[0]}`)
   let requestSnapshot = new Promise ((resolve, reject)=>{
     request.get(requestList[0], function (err, response, body) {
       if (err) {
           console.error(err)
       }
       else{
-          //console.log(body)
+          console.log("requestSnapshotBody:" , body)
           resolve(JSON.parse(body))
       }
     })
   })
-
+  console.log(`requestLatestBlock ${requestList[1]}`)
   let requestLatestBlock = new Promise ((resolve, reject)=>{
 
     request.get(requestList[1], function (err, response, body) {
@@ -148,7 +149,7 @@ app.get('/snapshotIntegrate', (req, res) => {
           console.error(err)
       }
       else{
-          //console.log(body)
+          console.log("requestLatestBlock:", body)
           resolve(JSON.parse(body))
       }
     })
@@ -196,9 +197,24 @@ app.get('/snapshotIntegrate', (req, res) => {
         
         console.log("这里：", latestBlock.hash)
         console.log(snapshot.slice(-1)[0].winning_block_txid)
-        request.get(requestList[2]+latestBlock.hash, function (err, response, body) {
-          if (err) {
-              console.error(err)
+        console.log(`requesting ${requestList[2]+latestBlock.hash}`)
+
+        var options = { method: 'POST',
+          url: 'http://daemontech2:daemontech2@47.242.239.96:8332',
+          headers: 
+          { 'Postman-Token': '987df2f7-03e7-48f3-a0ab-a3c5ebbacf58',
+            'cache-control': 'no-cache',
+            'Content-Type': 'application/json' },
+          body: 
+          { id: 'stacks',
+            jsonrpc: '2.0',
+            method: 'getblock',
+            params: [ '0000000000000000000b583b45dfdaf84ee18a9dbfb2cc51c044f605cb7c564a' ] },
+          json: true };
+
+        request(options, function (error, response, body) {
+          if (error) {
+              console.error(error)
           }
           else{
               let rawBlock = JSON.parse(body);
@@ -214,14 +230,25 @@ app.get('/snapshotIntegrate', (req, res) => {
               console.log({ 
                               block_height: latestBlock.height, 
                               parent_block: latestBlock.height, 
-                              parent_txoff: index
+                              parent_txoff: parseInt(index)
                             })
-              resolve(res.send({ 
-                status: 200,
-                block_height: latestBlock.height, 
-                parent_block: latestBlock.height, 
-                parent_txoff: index
-              }))
+              if (index == -1){
+                resolve(res.send({ 
+                  status: 500,
+                  block_height: latestBlock.height, 
+                  parent_block: latestBlock.height, 
+                  parent_txoff: -1
+                }))
+              }
+              else{
+                resolve(res.send({ 
+                  status: 200,
+                  block_height: latestBlock.height, 
+                  parent_block: latestBlock.height, 
+                  parent_txoff: parseInt(index)
+                }))
+              }
+              
           }
         })
       })

@@ -469,3 +469,24 @@ export function handleBlockCommitInfo(blockcommits){
   }
   return result
 }
+
+export function latestSnapshot(){
+  const root = ''
+
+  const sortition_db_path = "burnchain/db/bitcoin/mainnet/sortition.db/marf"
+
+  const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
+  
+  const sortition_db = new Database(`${data_root_path}/${sortition_db_path}`, {
+    readonly: true,
+    fileMustExist: true,
+  })
+
+  const stmt_one_block = sortition_db.prepare(`SELECT * FROM snapshots order by block_height desc limit 1`)
+
+  const latestSnapshot = stmt_one_block.all()
+
+  //console.log(latestSnapshot[0])
+
+  return latestSnapshot[0]
+}

@@ -1,9 +1,12 @@
 import express from 'express';
-import { getMinerInfo, handleBlockCommitInfo } from './rpc.js'
+import { getMinerInfo, handleBlockCommitInfo, latestSnapshot } from './rpc.js'
 import heapdump from 'heapdump';
 import redis from "redis"
 import { promisify }  from "util"
 import path from 'path';
+import request from "request";
+
+
 let clientConfig = {};
 
 if (process.env.NODE_ENV === "production") {
@@ -25,7 +28,7 @@ client.on("error", function(error) {
 
 
 const app = express()
-const port = 8887
+const port = 8889
 
 const root = ''
 const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
@@ -119,15 +122,21 @@ app.get('/block_info', (req, res) => {
   )
 })
 
+app.get('/snapshot', (req, res) => {
+  let r = latestSnapshot()
+  res.send(r)
+})
+
+/*
 setInterval(function(){
   update();
 }, 300000);
-
+*/
 
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
 })
 
-update()
+//update()
 

@@ -482,14 +482,19 @@ export function latestSnapshot(){
     fileMustExist: true,
   })
 
-  const stmt_one_block = sortition_db.prepare(`SELECT * FROM snapshots order by block_height desc limit 1`)
+  const stmt_one_block = sortition_db.prepare(`SELECT * FROM snapshots order by block_height desc limit 10`)
 
   const latestSnapshot = stmt_one_block.all()
 
   //console.log(latestSnapshot[0])
   let index = 0;
+  console.log(index, latestSnapshot[index])
+  console.log(latestSnapshot[index].winning_block_txid)
+  console.log(latestSnapshot[1])
   while (latestSnapshot[index].winning_block_txid == "0000000000000000000000000000000000000000000000000000000000000000"){
-      index ++;
+      index = index + 1;
+      console.log(index)
   }
+
   return latestSnapshot.slice(0, index+1)
 }

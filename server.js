@@ -127,6 +127,109 @@ app.get('/snapshot', (req, res) => {
   res.send(r)
 })
 
+app.get('/snapshotIntegrate', (req, res) => {
+  let requestList = ['http://47.242.239.96:8889/snapshot', 'https://blockchain.info/latestblock', 'https://blockchain.info/rawblock/']
+  let requestSnapshot = new Promise ((resolve, reject)=>{
+    request.get(requestList[0], function (err, response, body) {
+      if (err) {
+          console.error(err)
+      }
+      else{
+          console.log(body)
+          resolve(JSON.parse(body))
+      }
+    })
+  })
+
+  let requestLatestBlock = new Promise ((resolve, reject)=>{
+
+    request.get(requestList[1], function (err, response, body) {
+      if (err) {
+          console.error(err)
+      }
+      else{
+          console.log(body)
+          resolve(JSON.parse(body))
+      }
+    })
+  })
+
+
+
+  //blockheight
+  //parent_block
+  //parent_txoff
+
+
+  /*
+  let requestB = new Promise ((resolve, reject)=>{
+    request.get(requestList[1], function (err, response, body) {
+      if (err) {
+          console.error(err)
+          resolve("")
+      }
+      else{
+          console.log(body)
+          resolve(JSON.parse(body))
+      }
+    })
+  })
+  */
+
+
+
+
+  return Promise.all([requestSnapshot, requestLatestBlock])
+  .then(([snapshot, latestBlock]) => {
+    //console.log(snapshot, latestBlock)
+    //block_height
+    //parent_block
+    //parent_txoff
+    console.log(snapshot[0].block_height, latestBlock.height)
+    if (snapshot[0].block_height < latestBlock.height) 
+      return res.send({status: 500, block_height: 0, parent_block: 0 , parent_txoff: 0})
+    else{
+      // latestBlock.hash
+      // https://blockchain.info/rawblock/ + latestBlock.hash
+      // snapshot.winning_block_txid
+      return new Promise ((resolve, reject)=>{
+        console.log("这里：", latestBlock.hash, snapshot[-1].winning_block_txid)
+        request.get(requestList[2]+latestBlock.hash, function (err, response, body) {
+          if (err) {
+              console.error(err)
+          }
+          else{
+              let rawBlock = JSON.parse(body);
+              let index = -1
+              //console.log(rawBlock)
+              for (let item in rawBlock.tx){
+                //console.log(item)
+                if (rawBlock.tx[item].hash == snapshot[-1].winning_block_txid){
+                    index = item
+                    console.log("找到了：", item)
+                }
+              }
+              console.log({ 
+                              block_height: latestBlock.height, 
+                              parent_block: latestBlock.height, 
+                              parent_txoff: index
+                            })
+              resolve(res.send({ 
+                status: 200,
+                block_height: latestBlock.height, 
+                parent_block: latestBlock.height, 
+                parent_txoff: index
+              }))
+          }
+        })
+      })
+    }
+    
+    
+  })
+
+})
+
 /*
 setInterval(function(){
   update();

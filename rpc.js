@@ -487,9 +487,9 @@ export function latestSnapshot(){
   const latestSnapshot = stmt_one_block.all()
 
   //console.log(latestSnapshot[0])
-  let index = 1;
+  let index = 0;
   while (latestSnapshot[index].winning_block_txid == "0000000000000000000000000000000000000000000000000000000000000000"){
       index ++;
   }
-  return latestSnapshot.slice(0, index)
+  return latestSnapshot.slice(0, index+1)
 }

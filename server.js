@@ -129,55 +129,60 @@ app.get('/snapshot', (req, res) => {
 
 app.get('/snapshotIntegrate', (req, res) => {
   let requestList = ['http://47.242.239.96:8889/snapshot', 'https://blockchain.info/latestblock', 'https://blockchain.info/rawblock/']
-  console.log(`requestSnapshot ${requestList[0]}`)
+  
   let requestSnapshot = new Promise ((resolve, reject)=>{
+    console.log("requesting SnapshotBody =============================================")
     request.get(requestList[0], function (err, response, body) {
       if (err) {
           console.error(err)
       }
       else{
-          console.log("requestSnapshotBody:" , body)
-          resolve(JSON.parse(body))
+        try {
+
+          console.log("requestSnapshotBody--------------------------:" , body)
+          let result = JSON.parse(body)
+          
+          //console.log(result[0].block_height, result[0].winning_block_txid)
+          resolve(result)
+        }
+        catch(error){
+          resolve([{block_height: 0, winning_block_txid: 0}])
+        }
       }
     })
   })
-  console.log(`requestLatestBlock ${requestList[1]}`)
+
   let requestLatestBlock = new Promise ((resolve, reject)=>{
+    console.log("requesting LatestBlock =============================================")
+    var options = {
+      'method': 'POST',
+      'url': 'http://daemontech2:daemontech2@47.242.239.96:8332',
+      'headers': {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ "id": "stacks", "jsonrpc": "2.0", "method": "getblockchaininfo", "params": [] })
+    };
 
-    request.get(requestList[1], function (err, response, body) {
-      if (err) {
-          console.error(err)
+    request(options, function (error, response, body) {
+      if (error) {
+        return { status: 500 };
       }
       else{
-          console.log("requestLatestBlock:", body)
-          resolve(JSON.parse(body))
+        try {
+          console.log("requestLatestBlockBody------------------------------:" , body)
+          const info = JSON.parse(body)
+          //console.log('height:', info.result.blocks);
+          //console.log('bestblockhash:', info.result.bestblockhash);
+          //console.log("requestLatestBlock:" , {height: info.result.blocks, bestblockhash: info.result.bestblockhash})
+          resolve({height: info.result.blocks, bestblockhash: info.result.bestblockhash})  
+        }
+        catch (error){
+          resolve({height: 999999999, bestblockhash: 0})  
+        }
       }
-    })
-  })
+    });
 
-
-
-  //blockheight
-  //parent_block
-  //parent_txoff
-
-
-  /*
-  let requestB = new Promise ((resolve, reject)=>{
-    request.get(requestList[1], function (err, response, body) {
-      if (err) {
-          console.error(err)
-          resolve("")
-      }
-      else{
-          console.log(body)
-          resolve(JSON.parse(body))
-      }
-    })
-  })
-  */
-
-
+  });
 
 
   return Promise.all([requestSnapshot, requestLatestBlock])
@@ -186,53 +191,67 @@ app.get('/snapshotIntegrate', (req, res) => {
     //block_height
     //parent_block
     //parent_txoff
-    console.log(snapshot[0].block_height, latestBlock.height)
+    //console.log(snapshot[0].block_height, latestBlock.height)
     if (snapshot[0].block_height < latestBlock.height) 
-      return res.send({status: 500, block_height: 0, parent_block: 0 , parent_txoff: 0})
+      return res.send({status: 500, block_height: 0, parent_block: 0 , parent_txoff: 0, msg: "snapshot is lower than latestblockheight"})
     else{
       // latestBlock.hash
       // https://blockchain.info/rawblock/ + latestBlock.hash
       // snapshot.winning_block_txid
+      
       return new Promise ((resolve, reject)=>{
         
-        console.log("这里：", latestBlock.hash)
-        console.log(snapshot.slice(-1)[0].winning_block_txid)
-        console.log(`requesting ${requestList[2]+latestBlock.hash}`)
+        //console.log("Hash在这里：", latestBlock.bestblockhash)
+        let winning_block_txid = snapshot.slice(-1)[0].winning_block_txid
+        //console.log("winning_block_txid:", winning_block_txid)
 
-        var options = { method: 'POST',
-          url: 'http://daemontech2:daemontech2@47.242.239.96:8332',
-          headers: 
-          { 'Postman-Token': '987df2f7-03e7-48f3-a0ab-a3c5ebbacf58',
-            'cache-control': 'no-cache',
-            'Content-Type': 'application/json' },
-          body: 
-          { id: 'stacks',
-            jsonrpc: '2.0',
-            method: 'getblock',
-            params: [ '0000000000000000000b583b45dfdaf84ee18a9dbfb2cc51c044f605cb7c564a' ] },
-          json: true };
+        var options = { 
+          "method": 'POST',
+          "url": 'http://daemontech2:daemontech2@47.242.239.96:8332',
+          "body": JSON.stringify({ "id": 'stacks', "jsonrpc": '2.0', "method": 'getblock', "params": [ latestBlock.bestblockhash ] }),
+          'headers': {
+            'Content-Type': 'application/json'
+          },
+        };
 
+        console.log("requesting RawBlock ===================================================")
         request(options, function (error, response, body) {
           if (error) {
               console.error(error)
           }
           else{
-              let rawBlock = JSON.parse(body);
+              //console.log(body)
+              //console.log("no error")
               let index = -1
-              //console.log(rawBlock)
-              for (let item in rawBlock.tx){
+              try {
+              
+                let rawBlock = JSON.parse(body);
                 
-                if (rawBlock.tx[item].hash == snapshot.slice(-1)[0].winning_block_txid){
-                    index = item
-                    console.log("找到了：", item)
+                //console.log(rawBlock)
+                
+                for (let item in rawBlock.result.tx){
+                  //console.log(item)
+                  //console.log(item, rawBlock.result.tx[item].hash, snapshot.slice(-1)[0].winning_block_txid)     
+                  
+                  if (rawBlock.result.tx[item] == winning_block_txid){
+                      index = item
+                      console.log("找到了：", item)
+                  }
+                  
                 }
               }
+              catch (error){
+                console.log("error when parsing, keep going")
+                index = -1
+              }
+              
+              
               console.log({ 
                               block_height: latestBlock.height, 
                               parent_block: latestBlock.height, 
                               parent_txoff: parseInt(index)
                             })
-              if (index == -1){
+              if (index === -1){
                 resolve(res.send({ 
                   status: 500,
                   block_height: latestBlock.height, 
@@ -247,16 +266,12 @@ app.get('/snapshotIntegrate', (req, res) => {
                   parent_block: latestBlock.height, 
                   parent_txoff: parseInt(index)
                 }))
-              }
-              
+              }     
           }
         })
       })
-    }
-    
-    
+    } 
   })
-
 })
 
 /*

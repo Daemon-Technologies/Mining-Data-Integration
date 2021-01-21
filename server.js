@@ -203,6 +203,7 @@ app.get('/snapshotIntegrate', (req, res) => {
         //console.log("Hash在这里：", latestBlock.bestblockhash)
         let winning_block_txid = snapshot.slice(-1)[0].winning_block_txid
         let winning_block_hash = snapshot.slice(-1)[0].burn_header_hash
+        let winning_block_height = snapshot.slice(-1)[0].block_height
         //console.log("winning_block_txid:", winning_block_txid)
 
         var options = { 
@@ -248,14 +249,14 @@ app.get('/snapshotIntegrate', (req, res) => {
               
               console.log({ 
                               block_height: latestBlock.height, 
-                              parent_block: latestBlock.height, 
+                              parent_block: winning_block_height, 
                               parent_txoff: parseInt(index)
                             })
               if (index === -1){
                 resolve(res.send({ 
                   status: 500,
                   block_height: latestBlock.height, 
-                  parent_block: latestBlock.height, 
+                  parent_block: winning_block_height, 
                   parent_txoff: -1
                 }))
               }
@@ -263,7 +264,7 @@ app.get('/snapshotIntegrate', (req, res) => {
                 resolve(res.send({ 
                   status: 200,
                   block_height: latestBlock.height, 
-                  parent_block: latestBlock.height, 
+                  parent_block: winning_block_height, 
                   parent_txoff: parseInt(index)
                 }))
               }     

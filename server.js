@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMinerInfo, handleBlockCommitInfo, latestSnapshot } from './rpc.js'
+import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo } from './rpc.js'
 import heapdump from 'heapdump';
 import redis from "redis"
 import { promisify }  from "util"
@@ -138,7 +138,6 @@ app.get('/snapshotIntegrate', (req, res) => {
       }
       else{
         try {
-
           console.log("requestSnapshotBody--------------------------:" , body)
           let result = JSON.parse(body)
           
@@ -280,6 +279,10 @@ setInterval(function(){
 }, 300000);
 */
 
+app.get('/blockchaininfo', (req, res) => {
+  let r = getblockchaininfo()
+  res.send(r)
+})
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)

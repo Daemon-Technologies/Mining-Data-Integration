@@ -4,7 +4,7 @@ import stacks_transactions from '@blockstack/stacks-transactions'
 const { getAddressFromPublicKey, TransactionVersion } = stacks_transactions
 import secp256k1 from 'secp256k1'
 import c32 from 'c32check'
-
+import request from "request";
 
 
 export async function getMinerInfo(param) {
@@ -498,3 +498,30 @@ export function latestSnapshot(){
 
   return latestSnapshot.slice(0, index+1)
 }
+
+export async function getblockchaininfo(){
+
+  var options = { method: 'POST',
+    url: 'http://daemontech2:daemontech2@47.242.239.96:8332',
+    headers: 
+    { 'Postman-Token': 'de7a5af2-95cc-40f6-a131-4d4ba75d16a9',
+      'cache-control': 'no-cache',
+      'Content-Type': 'application/json' },
+    body: 
+    { id: 'stacks',
+      jsonrpc: '2.0',
+      method: 'getblockchaininfo',
+      params: [] },
+    json: true };
+  return new Promise((resolve, reject)=> {
+    request(options, function (error, response, body) {
+      if (error) throw new Error(error);
+  
+      console.log(body);
+      resolve(body)
+    });
+  })
+  
+
+}
+ 

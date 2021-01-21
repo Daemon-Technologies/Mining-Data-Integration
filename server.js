@@ -202,12 +202,13 @@ app.get('/snapshotIntegrate', (req, res) => {
         
         //console.log("Hash在这里：", latestBlock.bestblockhash)
         let winning_block_txid = snapshot.slice(-1)[0].winning_block_txid
+        let winning_block_hash = snapshot.slice(-1)[0].burn_header_hash
         //console.log("winning_block_txid:", winning_block_txid)
 
         var options = { 
           "method": 'POST',
           "url": 'http://daemontech2:daemontech2@47.242.239.96:8332',
-          "body": JSON.stringify({ "id": 'stacks', "jsonrpc": '2.0', "method": 'getblock', "params": [ latestBlock.bestblockhash ] }),
+          "body": JSON.stringify({ "id": 'stacks', "jsonrpc": '2.0', "method": 'getblock', "params": [ winning_block_hash ] }),
           'headers': {
             'Content-Type': 'application/json'
           },

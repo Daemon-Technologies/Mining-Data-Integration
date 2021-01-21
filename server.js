@@ -6,7 +6,7 @@ import { promisify }  from "util"
 import path from 'path';
 import request from "request";
 
-
+/*
 let clientConfig = {};
 
 if (process.env.NODE_ENV === "production") {
@@ -26,14 +26,14 @@ client.on("error", function(error) {
   console.error(error);
 });
 
-
+*/
 const app = express()
 const port = 8889
 
 const root = ''
 const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
 const use_txs = process.argv[2] === '-t'
-
+/*
 const getRedisData = () => {
   const miningInfoPromise = redisGetAsync("mining_info");
   const minerInfoPromise = redisGetAsync("miner_info");
@@ -50,7 +50,7 @@ const getBlockCommitsData = () => {
     return { block_commits_info:BlockCommitsInfo}
   })
 }
-
+*/
 app.all("*", function (req, res, next) {
   res.header("Access-Control-Allow-Origin", req.headers.origin || '*');
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
@@ -62,7 +62,7 @@ app.all("*", function (req, res, next) {
     next();
   }
 })
-
+/*
 async function update() {
   console.log("update")
   let result = await getMinerInfo()
@@ -121,7 +121,7 @@ app.get('/block_info', (req, res) => {
     }
   )
 })
-
+*/
 app.get('/snapshot', (req, res) => {
   let r = latestSnapshot()
   res.send(r)

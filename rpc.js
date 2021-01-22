@@ -568,7 +568,7 @@ export async function getMiningStatus(){
   return strFile;
 }
 
-export async function setMiningAddress(value){
+export async function setMiningStatus(value){
   fs.writeFileSync("mining_status.txt", value, 'utf-8');
 }
 

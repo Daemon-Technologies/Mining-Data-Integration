@@ -1,10 +1,11 @@
 import express from 'express';
-import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo } from './rpc.js'
+import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo, latest3Snapshot, latest3StagingBlock, getMiningStatus, setMiningStatus } from './rpc.js'
 import heapdump from 'heapdump';
 import redis from "redis"
 import { promisify }  from "util"
 import path from 'path';
 import request from "request";
+import bodyParser from "body-parser"
 
 /*
 let clientConfig = {};
@@ -31,8 +32,13 @@ const app = express()
 const port = 8889
 
 const root = ''
-const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
-const use_txs = process.argv[2] === '-t'
+let password;// = "12345678" //default password
+password = `${process.argv[3] || process.argv[2]}`
+if (password == "undefined") password = "12345678"
+console.log(password)
+
+app.use(bodyParser.json());
+
 /*
 const getRedisData = () => {
   const miningInfoPromise = redisGetAsync("mining_info");
@@ -122,9 +128,25 @@ app.get('/block_info', (req, res) => {
   )
 })
 */
+
 app.get('/snapshot', (req, res) => {
   let r = latestSnapshot()
   res.send(r)
+})
+
+app.get('/snapshot3', (req, res) => {
+  let r = latest3Snapshot()
+  res.send(r)
+})
+
+app.get('/stagedb', (req, res) => {
+  let r = latest3StagingBlock()
+  res.send(r)
+})
+
+app.post('/switchMiningStatus', (req, res) => {
+  let body = req.body;
+  res.send(body)
 })
 
 app.get('/snapshotIntegrate', (req, res) => {

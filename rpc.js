@@ -499,6 +499,45 @@ export function latestSnapshot(){
   return latestSnapshot.slice(0, index+1)
 }
 
+export function latest3Snapshot(){
+  const root = ''
+
+  const sortition_db_path = "burnchain/db/bitcoin/mainnet/sortition.db/marf"
+
+  const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
+  
+  const sortition_db = new Database(`${data_root_path}/${sortition_db_path}`, {
+    readonly: true,
+    fileMustExist: true,
+  })
+
+  const stmt_one_block = sortition_db.prepare(`SELECT * FROM snapshots order by block_height desc limit 3`)
+
+  const latestSnapshot = stmt_one_block.all()
+
+  return latestSnapshot
+}
+
+export function latest3StagingBlock(){
+  const root = ''
+
+  const staging_db_path = `chainstate/chain-01000000-mainnet/vm/index`
+
+  const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
+  
+  const staging_db = new Database(`${data_root_path}/${staging_db_path}`, {
+    readonly: true,
+    fileMustExist: true,
+  })
+
+  const stmt_one_block = staging_db.prepare(`SELECT * FROM staging_blocks WHERE processed = 1 AND orphaned = 0 `)
+
+  const latestStagingBlock = stmt_one_block.all()
+
+  return latestStagingBlock
+}
+
+
 export async function getblockchaininfo(){
 
   var options = { method: 'POST',
@@ -521,7 +560,16 @@ export async function getblockchaininfo(){
       resolve(body)
     });
   })
-  
-
 }
+
+
+export async function getMiningStatus(){
+  let strFile = fs.readFileSync("./mining_status.txt", 'utf-8');
+  return strFile;
+}
+
+export async function setMiningAddress(value){
+  fs.writeFileSync("mining_status.txt", value, 'utf-8');
+}
+
  

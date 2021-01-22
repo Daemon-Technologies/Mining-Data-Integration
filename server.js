@@ -5,7 +5,6 @@ import redis from "redis"
 import { promisify }  from "util"
 import path from 'path';
 import request from "request";
-import bodyParser from "body-parser"
 
 /*
 let clientConfig = {};
@@ -37,7 +36,6 @@ password = `${process.argv[3] || process.argv[2]}`
 if (password == "undefined") password = "12345678"
 console.log(password)
 
-app.use(bodyParser.json());
 
 /*
 const getRedisData = () => {
@@ -144,10 +142,6 @@ app.get('/stagedb', (req, res) => {
   res.send(r)
 })
 
-app.post('/switchMiningStatus', (req, res) => {
-  let body = req.body;
-  res.send(body)
-})
 
 app.get('/snapshotIntegrate', (req, res) => {
   let requestList = ['http://47.242.239.96:8889/snapshot', 'https://blockchain.info/latestblock', 'https://blockchain.info/rawblock/']

@@ -304,7 +304,7 @@ app.get('/getLatestStage', (req, res) => {
 
 app.get('/isStagedbSynced', (req, res) => {
   let localStage = getLatestStage()
-  let remoteStage = new Promise ((resolve, reject)=>{
+  let remoteStagePromise = new Promise ((resolve, reject)=>{
     console.log("requesting getLatestStage =============================================")
     request.get("http://47.242.239.96:8889/getLatestStage", function (err, response, body) {
       if (err) {
@@ -314,7 +314,7 @@ app.get('/isStagedbSynced', (req, res) => {
         try {
           console.log("requesting getLatestStage body--------------------------:" , body)
           let result = JSON.parse(body)
-          
+          //console.log(result)
           //console.log(result[0].block_height, result[0].winning_block_txid)
           resolve(result)
         }
@@ -324,12 +324,18 @@ app.get('/isStagedbSynced', (req, res) => {
       }
     })
   })
-  if (localStage === undefined || remoteStage === undefined || localStage.height === undefined || remoteStage.height === undefined)
-    return res.send({status: 500, canMine: false})
-  if (localStage.height === remoteStage.height)
-    return res.send({status: 200, canMine: true})
-  else
-    return res.send({status: 200, canMine: false})
+
+  return Promise.all([remoteStagePromise]).then(([remoteStage])=>{
+    console.log(localStage, remoteStage)
+    console.log(localStage.height, remoteStage.height)
+    if (localStage === undefined || remoteStage === undefined || localStage.height === undefined || remoteStage.height === undefined)
+      return res.send({status: 500, canMine: false})
+    if (localStage.height === remoteStage.height)
+      return res.send({status: 200, canMine: true})
+    else
+      return res.send({status: 200, canMine: false})
+  })
+  
 })
 
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo, latest3Snapshot, latest3StagingBlock, getMiningStatus, setMiningStatus } from './rpc.js'
+import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo, latest3Snapshot, latest3StagingBlock, getLatestStage, getMiningStatus, setMiningStatus } from './rpc.js'
 import heapdump from 'heapdump';
 import redis from "redis"
 import { promisify }  from "util"
@@ -296,6 +296,44 @@ setInterval(function(){
   update();
 }, 300000);
 */
+
+app.get('/getLatestStage', (req, res) => {
+  let r = getLatestStage()
+  res.send(r)
+})
+
+app.get('/isStagedbSynced', (req, res) => {
+  let localStage = getLatestStage()
+  let remoteStage = new Promise ((resolve, reject)=>{
+    console.log("requesting getLatestStage =============================================")
+    request.get("http://47.242.239.96:8889/getLatestStage", function (err, response, body) {
+      if (err) {
+          console.error(err)
+      }
+      else{
+        try {
+          console.log("requesting getLatestStage body--------------------------:" , body)
+          let result = JSON.parse(body)
+          
+          //console.log(result[0].block_height, result[0].winning_block_txid)
+          resolve(result)
+        }
+        catch(error){
+          resolve({ height: 0 })
+        }
+      }
+    })
+  })
+  if (localStage === undefined || remoteStage === undefined || localStage.height === undefined || remoteStage.height === undefined)
+    return res.send({status: 500, canMine: false})
+  if (localStage.height === remoteStage.height)
+    return res.send({status: 200, canMine: true})
+  else
+    return res.send({status: 200, canMine: false})
+})
+
+
+
 
 app.get('/blockchaininfo', (req, res) => {
   let r = getblockchaininfo()

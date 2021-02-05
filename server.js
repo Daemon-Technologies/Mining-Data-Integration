@@ -1,9 +1,12 @@
 import express from 'express';
-import { getMinerInfo, handleBlockCommitInfo } from './rpc.js'
+import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo, latest3Snapshot, latest3StagingBlock, getLatestStage, getMiningStatus, setMiningStatus } from './rpc.js'
 import heapdump from 'heapdump';
 import redis from "redis"
 import { promisify }  from "util"
 import path from 'path';
+import request from "request";
+
+/*
 let clientConfig = {};
 
 if (process.env.NODE_ENV === "production") {
@@ -23,14 +26,18 @@ client.on("error", function(error) {
   console.error(error);
 });
 
-
+*/
 const app = express()
-const port = 8887
+const port = 8889
 
 const root = ''
-const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
-const use_txs = process.argv[2] === '-t'
+let password;// = "12345678" //default password
+password = `${process.argv[3] || process.argv[2]}`
+if (password == "undefined") password = "12345678"
+console.log(password)
 
+
+/*
 const getRedisData = () => {
   const miningInfoPromise = redisGetAsync("mining_info");
   const minerInfoPromise = redisGetAsync("miner_info");
@@ -47,7 +54,7 @@ const getBlockCommitsData = () => {
     return { block_commits_info:BlockCommitsInfo}
   })
 }
-
+*/
 app.all("*", function (req, res, next) {
   res.header("Access-Control-Allow-Origin", req.headers.origin || '*');
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
@@ -59,7 +66,7 @@ app.all("*", function (req, res, next) {
     next();
   }
 })
-
+/*
 async function update() {
   console.log("update")
   let result = await getMinerInfo()
@@ -118,16 +125,230 @@ app.get('/block_info', (req, res) => {
     }
   )
 })
+*/
 
+app.get('/snapshot', (req, res) => {
+  let r = latestSnapshot()
+  res.send(r)
+})
+
+app.get('/snapshot3', (req, res) => {
+  let r = latest3Snapshot()
+  res.send(r)
+})
+
+app.get('/stagedb', (req, res) => {
+  let r = latest3StagingBlock()
+  res.send(r)
+})
+
+
+app.get('/snapshotIntegrate', (req, res) => {
+  let requestList = ['http://47.242.239.96:8889/snapshot', 'https://blockchain.info/latestblock', 'https://blockchain.info/rawblock/']
+  
+  let requestSnapshot = new Promise ((resolve, reject)=>{
+    console.log("requesting SnapshotBody =============================================")
+    request.get(requestList[0], function (err, response, body) {
+      if (err) {
+          console.error(err)
+      }
+      else{
+        try {
+          console.log("requestSnapshotBody--------------------------:" , body)
+          let result = JSON.parse(body)
+          
+          //console.log(result[0].block_height, result[0].winning_block_txid)
+          resolve(result)
+        }
+        catch(error){
+          resolve([{block_height: 0, winning_block_txid: 0}])
+        }
+      }
+    })
+  })
+
+  let requestLatestBlock = new Promise ((resolve, reject)=>{
+    console.log("requesting LatestBlock =============================================")
+    var options = {
+      'method': 'POST',
+      'url': 'http://daemontech2:daemontech2@47.242.239.96:8332',
+      'headers': {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ "id": "stacks", "jsonrpc": "2.0", "method": "getblockchaininfo", "params": [] })
+    };
+
+    request(options, function (error, response, body) {
+      if (error) {
+        return { status: 500 };
+      }
+      else{
+        try {
+          console.log("requestLatestBlockBody------------------------------:" , body)
+          const info = JSON.parse(body)
+          //console.log('height:', info.result.blocks);
+          //console.log('bestblockhash:', info.result.bestblockhash);
+          //console.log("requestLatestBlock:" , {height: info.result.blocks, bestblockhash: info.result.bestblockhash})
+          resolve({height: info.result.blocks, bestblockhash: info.result.bestblockhash})  
+        }
+        catch (error){
+          resolve({height: 999999999, bestblockhash: 0})  
+        }
+      }
+    });
+
+  });
+
+
+  return Promise.all([requestSnapshot, requestLatestBlock])
+  .then(([snapshot, latestBlock]) => {
+    //console.log(snapshot, latestBlock)
+    //block_height
+    //parent_block
+    //parent_txoff
+    //console.log(snapshot[0].block_height, latestBlock.height)
+    if (snapshot[0].block_height < latestBlock.height) 
+      return res.send({status: 500, block_height: 0, parent_block: 0 , parent_txoff: 0, msg: "snapshot is lower than latestblockheight"})
+    else{
+      // latestBlock.hash
+      // https://blockchain.info/rawblock/ + latestBlock.hash
+      // snapshot.winning_block_txid
+      
+      return new Promise ((resolve, reject)=>{
+        
+        //console.log("Hash在这里：", latestBlock.bestblockhash)
+        let winning_block_txid = snapshot.slice(-1)[0].winning_block_txid
+        let winning_block_hash = snapshot.slice(-1)[0].burn_header_hash
+        let winning_block_height = snapshot.slice(-1)[0].block_height
+        //console.log("winning_block_txid:", winning_block_txid)
+
+        var options = { 
+          "method": 'POST',
+          "url": 'http://daemontech2:daemontech2@47.242.239.96:8332',
+          "body": JSON.stringify({ "id": 'stacks', "jsonrpc": '2.0', "method": 'getblock', "params": [ winning_block_hash ] }),
+          'headers': {
+            'Content-Type': 'application/json'
+          },
+        };
+
+        console.log("requesting RawBlock ===================================================")
+        request(options, function (error, response, body) {
+          if (error) {
+              console.error(error)
+          }
+          else{
+              //console.log(body)
+              //console.log("no error")
+              let index = -1
+              try {
+              
+                let rawBlock = JSON.parse(body);
+                
+                //console.log(rawBlock)
+                
+                for (let item in rawBlock.result.tx){
+                  //console.log(item)
+                  //console.log(item, rawBlock.result.tx[item].hash, snapshot.slice(-1)[0].winning_block_txid)     
+                  
+                  if (rawBlock.result.tx[item] == winning_block_txid){
+                      index = item
+                      console.log("找到了：", item)
+                  }
+                  
+                }
+              }
+              catch (error){
+                console.log("error when parsing, keep going")
+                index = -1
+              }
+              
+              
+              console.log({ 
+                              block_height: latestBlock.height, 
+                              parent_block: winning_block_height, 
+                              parent_txoff: parseInt(index)
+                            })
+              if (index === -1){
+                resolve(res.send({ 
+                  status: 500,
+                  block_height: latestBlock.height, 
+                  parent_block: winning_block_height, 
+                  parent_txoff: -1
+                }))
+              }
+              else{
+                resolve(res.send({ 
+                  status: 200,
+                  block_height: latestBlock.height, 
+                  parent_block: winning_block_height, 
+                  parent_txoff: parseInt(index)
+                }))
+              }     
+          }
+        })
+      })
+    } 
+  })
+})
+
+/*
 setInterval(function(){
   update();
 }, 300000);
+*/
+
+app.get('/getLatestStage', (req, res) => {
+  let r = getLatestStage()
+  res.send(r)
+})
+
+app.get('/isStagedbSynced', (req, res) => {
+  let localStage = getLatestStage()
+  let remoteStagePromise = new Promise ((resolve, reject)=>{
+    console.log("requesting getLatestStage =============================================")
+    request.get("http://47.242.239.96:8889/getLatestStage", function (err, response, body) {
+      if (err) {
+          console.error(err)
+      }
+      else{
+        try {
+          console.log("requesting getLatestStage body--------------------------:" , body)
+          let result = JSON.parse(body)
+          //console.log(result)
+          //console.log(result[0].block_height, result[0].winning_block_txid)
+          resolve(result)
+        }
+        catch(error){
+          resolve({ height: 0 })
+        }
+      }
+    })
+  })
+
+  return Promise.all([remoteStagePromise]).then(([remoteStage])=>{
+    console.log(localStage, remoteStage)
+    console.log(localStage.height, remoteStage.height)
+    if (localStage === undefined || remoteStage === undefined || localStage.height === undefined || remoteStage.height === undefined)
+      return res.send({status: 500, canMine: false})
+    if (localStage.height === remoteStage.height)
+      return res.send({status: 200, canMine: true})
+    else
+      return res.send({status: 200, canMine: false})
+  })
+  
+})
 
 
+
+
+app.get('/blockchaininfo', (req, res) => {
+  let r = getblockchaininfo()
+  res.send(r)
+})
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
 })
 
-update()
+//update()
 

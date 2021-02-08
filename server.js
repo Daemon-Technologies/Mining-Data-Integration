@@ -66,8 +66,8 @@ async function update() {
   
   //console.log(JSON.stringify(result.mining_info))
   //console.log("in")
-  //client.set("mining_info", JSON.stringify(result.mining_info))
-  //client.set("miner_info", JSON.stringify(result.miner_info))
+  client.set("mining_info", JSON.stringify(result.mining_info))
+  client.set("miner_info", JSON.stringify(result.miner_info))
   let blockcommits = handleBlockCommitInfo(result.block_commits)
   console.log(blockcommits)
   client.set("block_commits_info", JSON.stringify(blockcommits))
@@ -95,10 +95,19 @@ app.get('/get', (req, res) => {
 app.get('/mining_info', (req, res) => {
   getRedisData().then(
     (data) => {
-      let resp = {miner_info: JSON.parse(data.minerInfo), mining_info: JSON.parse(data.miningInfo)}
+      let resp = {mining_info: JSON.parse(data.miningInfo)}
       return res.send(resp)
     }
   )
+})
+
+app.get('/miner_info', (req, res) => {
+   getRedisData().then(
+     (data) => {
+	let resp = {miner_info: JSON.parse(data.minerInfo)}
+	return res.send(resp)
+     }
+   )
 })
 
 app.get('/block_info', (req, res) => {
@@ -121,7 +130,7 @@ app.get('/block_info', (req, res) => {
 
 setInterval(function(){
   update();
-}, 300000);
+}, 60000);
 
 
 

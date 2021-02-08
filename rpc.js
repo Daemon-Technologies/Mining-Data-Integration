@@ -456,7 +456,9 @@ export function handleBlockCommitInfo(blockcommits){
     let block_commit_result = { stacks_block_height: key}
     let commit_value_list = []
     let sum_burn_fees = 0
+    let miner_amount = 0 
     for (let item of block_commits_per_block){ 
+       miner_amount ++
        sum_burn_fees += parseInt(item.burn_fee)
        commit_value_list.push({burn_fee: item.burn_fee, leader_key_address: item.leader_key_address})
        //if (key == 266) console.log(item.burn_fee, item.leader_key_address)
@@ -464,6 +466,7 @@ export function handleBlockCommitInfo(blockcommits){
     //if (key == 266) console.log(sum_burn_fees)
     block_commit_result["commit_value_list"] = commit_value_list
     block_commit_result["sum_burn_fees"] = sum_burn_fees
+    block_commit_result["sum_miner_amount"] = miner_amount
 
     result.push(block_commit_result)
   }

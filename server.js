@@ -108,9 +108,11 @@ app.get('/miner_info', (req, res) => {
   getMinerInfoFromRedis().then(
     (data) => {
       let resp = JSON.parse(data)
-      if (latest) return res.send(resp.slice(-latest - 1))
-      if (page && size) return res.send(resp.slice(size*(page-1), size*page)) 
-      return res.send(resp)
+      if (latest) 
+          return res.send({'data': resp.slice(-latest - 1), 'total': resp.slice(-latest - 1).length});
+      if (page && size) 
+          return res.send({'data':resp.slice(size*(page-1), size*page), 'total':resp.slice(size*(page-1), size*page)}); 
+      return res.send({'data': resp, 'total': resp.length})
     }
   )
 })

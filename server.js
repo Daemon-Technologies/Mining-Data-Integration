@@ -111,7 +111,7 @@ app.get('/miner_info', (req, res) => {
       if (latest) 
           return res.send({'data': resp.slice(-latest - 1), 'total': resp.slice(-latest - 1).length});
       if (page && size) 
-          return res.send({'data':resp.slice(size*(page-1), size*page), 'total':resp.slice(size*(page-1), size*page)}); 
+          return res.send({'data':resp.slice(size*(page-1), size*page), 'total':resp.slice(size*(page-1), size*page).length}); 
       return res.send({'data': resp, 'total': resp.length})
     }
   )

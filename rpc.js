@@ -460,7 +460,7 @@ export function handleBlockCommitInfo(blockcommits){
     for (let item of block_commits_per_block){ 
        miner_amount ++
        sum_burn_fees += parseInt(item.burn_fee)
-       commit_value_list.push({burn_fee: item.burn_fee, leader_key_address: item.leader_key_address})
+       commit_value_list.push({burn_fee: item.burn_fee, leader_key_address: item.leader_key_address, btc_address: c32.c32ToB58(item.leader_key_address)})
        //if (key == 266) console.log(item.burn_fee, item.leader_key_address)
     }
     //if (key == 266) console.log(sum_burn_fees)

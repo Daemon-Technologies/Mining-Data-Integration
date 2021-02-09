@@ -109,9 +109,9 @@ app.get('/miner_info', (req, res) => {
     (data) => {
       let resp = JSON.parse(data)
       if (latest) 
-          return res.send({'data': resp.slice(-latest - 1), 'total': resp.slice(-latest - 1).length});
+          return res.send({'data': resp.slice(-latest - 1), 'total': resp.length});
       if (page && size) 
-          return res.send({'data':resp.slice(size*(page-1), size*page), 'total':resp.slice(size*(page-1), size*page).length}); 
+          return res.send({'data':resp.slice(size*(page-1), size*page), 'total':resp.length}); 
       return res.send({'data': resp, 'total': resp.length})
     }
   )
@@ -124,11 +124,9 @@ app.get('/block_info', (req, res) => {
   let latest = req.query.latest === undefined? undefined: req.query.latest;
   getBlockInfoFromRedis().then(
     (data) => {
-      console.log(data)
       let resp = JSON.parse(data)
-      if (latest) return res.send(resp.slice(-latest - 1))
-      console.log("path:", path.resolve(''))
-
+      if (latest) 
+          return res.send(resp.slice(-latest - 1))
       return res.send(resp.slice(start - 1, end))
     }
   )

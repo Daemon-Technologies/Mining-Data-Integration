@@ -72,13 +72,13 @@ const getBlockInfoFromRedis = () => {
 async function update() {
   console.log("update")
   let result = await getMinerInfo()
-  console.log(result)
-  console.log(JSON.stringify(result.mining_info))
+  //console.log(result)
+  //console.log(JSON.stringify(result.mining_info))
 
   client.set("mining_info", JSON.stringify(result.mining_info))
   client.set("miner_info", JSON.stringify(result.miner_info))
   let blockcommits = handleBlockCommitInfo(result.block_commits)
-  console.log(blockcommits)
+  //console.log(blockcommits)
   client.set("block_info", JSON.stringify(blockcommits))
   //console.log("in2")
   return "ok"

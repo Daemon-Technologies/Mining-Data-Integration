@@ -103,10 +103,13 @@ app.get('/mining_info', (req, res) => {
 
 app.get('/miner_info', (req, res) => {
   let latest = req.query.latest === undefined? undefined: req.query.latest;
+  let page = req.query.page === undefined? undefined: req.query.page;
+  let size = req.query.size === undefined? undefined: req.query.size;
   getMinerInfoFromRedis().then(
     (data) => {
       let resp = JSON.parse(data)
       if (latest) return res.send(resp.slice(-latest - 1))
+      if (page && size) return res.send(resp.slice(page*(size-1), page*size)) 
       return res.send(resp)
     }
   )

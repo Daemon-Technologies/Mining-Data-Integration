@@ -109,7 +109,7 @@ app.get('/miner_info', (req, res) => {
     (data) => {
       let resp = JSON.parse(data)
       if (latest) return res.send(resp.slice(-latest - 1))
-      if (page && size) return res.send(resp.slice(page*(size-1), page*size)) 
+      if (page && size) return res.send(resp.slice(size*(page-1), size*page)) 
       return res.send(resp)
     }
   )

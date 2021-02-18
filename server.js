@@ -117,6 +117,12 @@ app.get('/miner_info', (req, res) => {
   )
 })
 
+app.get('/miner_info_rt', async (req, res) => {
+  let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
+  //console.log(result.miner_info)
+  res.send(result.miner_info)
+})
+
 app.get('/block_info', (req, res) => {
   console.log(req.query.start)
   let start = req.query.start === undefined? 1 : req.query.start;

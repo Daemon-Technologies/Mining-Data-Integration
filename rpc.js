@@ -13,7 +13,15 @@ export async function getMinerInfo(param) {
   let start_height_stacks = 0
   let end_height = 99999999
   let end_height_stacks = 99999999
-
+  if (param != undefined){
+    
+    if (param.startblock != undefined)
+      start_height_stacks = param.startblock
+    if (param.endblock != undefined)
+      end_height_stacks = param.endblock
+    console.log(start_height_stacks, end_height_stacks)
+    console.log("in here")
+  }
   const root = ''
 
   const burnchain_db_path = 'burnchain/db/bitcoin/mainnet/burnchain.db'
@@ -238,6 +246,7 @@ export async function getMinerInfo(param) {
     for (let blockindex of Object.keys(burn_blocks_by_height)) {
       let block = burn_blocks_by_height[blockindex]
       if (block.block_height < start_height || block.block_height > end_height) continue;
+      if (block.stacks_block_height < start_height_stacks || block.stacks_block_height > end_height_stacks) continue;
       const total_burn = parseInt(block.total_burn) - total_burn_prev
       block.actual_burn = total_burn
       total_burn_prev = parseInt(block.total_burn)

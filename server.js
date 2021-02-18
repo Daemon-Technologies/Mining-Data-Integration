@@ -5,7 +5,7 @@ import redis from "redis"
 import { promisify }  from "util"
 import path from 'path';
 import request from "request";
-
+import {computeRR} from './utils.js'
 
 let clientConfig = {};
 
@@ -120,6 +120,21 @@ app.get('/miner_info', (req, res) => {
 app.get('/miner_info_rt', async (req, res) => {
   let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
   //console.log(result.miner_info)
+  let btc = 50000
+  let stx = 0.75
+  let gas = 56000
+  if (req.query.btc!=undefined && req.query.stx!=undefined){
+    btc = req.query.btc
+    stx = req.query.stx
+  }
+  if (req.query.gas!=undefined){
+    gas = req.query.gas
+  }
+  for (let item in result.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
+    //console.log(rr)
+    result.miner_info[item].RR = rr.toFixed(3);
+  }
   res.send(result.miner_info)
 })
 

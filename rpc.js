@@ -4,7 +4,7 @@ import stacks_transactions from '@blockstack/stacks-transactions'
 const { getAddressFromPublicKey, TransactionVersion } = stacks_transactions
 import secp256k1 from 'secp256k1'
 import c32 from 'c32check'
-
+import request from "request";
 
 
 export async function getMinerInfo(param) {
@@ -13,7 +13,15 @@ export async function getMinerInfo(param) {
   let start_height_stacks = 0
   let end_height = 99999999
   let end_height_stacks = 99999999
-
+  if (param != undefined){
+    
+    if (param.startblock != undefined)
+      start_height_stacks = param.startblock
+    if (param.endblock != undefined)
+      end_height_stacks = param.endblock
+    console.log(start_height_stacks, end_height_stacks)
+    console.log("in here")
+  }
   const root = ''
 
   const burnchain_db_path = 'burnchain/db/bitcoin/mainnet/burnchain.db'
@@ -238,6 +246,7 @@ export async function getMinerInfo(param) {
     for (let blockindex of Object.keys(burn_blocks_by_height)) {
       let block = burn_blocks_by_height[blockindex]
       if (block.block_height < start_height || block.block_height > end_height) continue;
+      if (block.stacks_block_height < start_height_stacks || block.stacks_block_height > end_height_stacks) continue;
       const total_burn = parseInt(block.total_burn) - total_burn_prev
       block.actual_burn = total_burn
       total_burn_prev = parseInt(block.total_burn)
@@ -456,16 +465,145 @@ export function handleBlockCommitInfo(blockcommits){
     let block_commit_result = { stacks_block_height: key}
     let commit_value_list = []
     let sum_burn_fees = 0
+    let miner_amount = 0 
     for (let item of block_commits_per_block){ 
+       miner_amount ++
        sum_burn_fees += parseInt(item.burn_fee)
-       commit_value_list.push({burn_fee: item.burn_fee, leader_key_address: item.leader_key_address})
+       commit_value_list.push({burn_fee: item.burn_fee, leader_key_address: item.leader_key_address, btc_address: c32.c32ToB58(item.leader_key_address)})
        //if (key == 266) console.log(item.burn_fee, item.leader_key_address)
     }
     //if (key == 266) console.log(sum_burn_fees)
     block_commit_result["commit_value_list"] = commit_value_list
     block_commit_result["sum_burn_fees"] = sum_burn_fees
+    block_commit_result["sum_miner_amount"] = miner_amount
 
     result.push(block_commit_result)
   }
   return result
+}
+
+export function latestSnapshot(){
+  const root = ''
+
+  const sortition_db_path = "burnchain/db/bitcoin/mainnet/sortition.db/marf"
+
+  const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
+  
+  const sortition_db = new Database(`${data_root_path}/${sortition_db_path}`, {
+    readonly: true,
+    fileMustExist: true,
+  })
+
+  const stmt_one_block = sortition_db.prepare(`SELECT * FROM snapshots order by block_height desc limit 10`)
+
+  const latestSnapshot = stmt_one_block.all()
+
+  //console.log(latestSnapshot[0])
+  let index = 0;
+  console.log(index, latestSnapshot[index])
+  console.log(latestSnapshot[index].winning_block_txid)
+  console.log(latestSnapshot[1])
+  while (latestSnapshot[index].winning_block_txid == "0000000000000000000000000000000000000000000000000000000000000000"){
+      index = index + 1;
+      console.log(index)
+  }
+
+  return latestSnapshot.slice(0, index+1)
+}
+
+export function latest3Snapshot(){
+  const root = ''
+
+  const sortition_db_path = "burnchain/db/bitcoin/mainnet/sortition.db/marf"
+
+  const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
+  
+  const sortition_db = new Database(`${data_root_path}/${sortition_db_path}`, {
+    readonly: true,
+    fileMustExist: true,
+  })
+
+  const stmt_one_block = sortition_db.prepare(`SELECT * FROM snapshots order by block_height desc limit 3`)
+
+  const latestSnapshot = stmt_one_block.all()
+
+  return latestSnapshot
+}
+
+export function latest3StagingBlock(){
+  const root = ''
+
+  const staging_db_path = `chainstate/chain-01000000-mainnet/vm/index`
+
+  const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
+  
+  const staging_db = new Database(`${data_root_path}/${staging_db_path}`, {
+    readonly: true,
+    fileMustExist: true,
+  })
+
+  const stmt_one_block = staging_db.prepare(`SELECT * FROM staging_blocks WHERE processed = 1 AND orphaned = 0 `)
+
+  const latestStagingBlock = stmt_one_block.all()
+
+  return latestStagingBlock
+}
+
+
+
+export async function getblockchaininfo(){
+
+  var options = { method: 'POST',
+    url: 'http://daemontech2:daemontech2@47.242.239.96:8332',
+    headers: 
+    { 'Postman-Token': 'de7a5af2-95cc-40f6-a131-4d4ba75d16a9',
+      'cache-control': 'no-cache',
+      'Content-Type': 'application/json' },
+    body: 
+    { id: 'stacks',
+      jsonrpc: '2.0',
+      method: 'getblockchaininfo',
+      params: [] },
+    json: true };
+  return new Promise((resolve, reject)=> {
+    request(options, function (error, response, body) {
+      if (error) throw new Error(error);
+  
+      console.log(body);
+      resolve(body)
+    });
+  })
+}
+
+
+export async function getMiningStatus(){
+  let strFile = fs.readFileSync("./mining_status.txt", 'utf-8');
+  return strFile;
+}
+
+export async function setMiningStatus(value){
+  fs.writeFileSync("mining_status.txt", value, 'utf-8');
+}
+
+export function getLatestStage(){
+  const root = ''
+
+  const staging_db_path = `chainstate/chain-01000000-mainnet/vm/index`
+
+  const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
+  
+  const staging_db = new Database(`${data_root_path}/${staging_db_path}`, {
+    readonly: true,
+    fileMustExist: true,
+  })
+
+  const stmt_one_block = staging_db.prepare(`SELECT * FROM staging_blocks WHERE processed = 1 AND orphaned = 0 order by height desc limit 1 `)
+
+
+  const latestStagingBlock = stmt_one_block.all()
+  console.log(latestStagingBlock)
+
+
+  return latestStagingBlock[0]
+  
 }

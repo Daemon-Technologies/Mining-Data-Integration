@@ -1,5 +1,6 @@
 import express from 'express';
 import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo, latest3Snapshot, latest3StagingBlock, getLatestStage, getMiningStatus, setMiningStatus } from './rpc.js'
+import { packMiningMonitorData } from "./mining_monitor_rpc.js"
 import heapdump from 'heapdump';
 import redis from "redis"
 import { promisify }  from "util"
@@ -67,14 +68,35 @@ const getBlockInfoFromRedis = () => {
   })
 }
 
+const getMinerInfo1000FromRedis = () => {
+  const miningInfoPromise = redisGetAsync("miner_info1000");
+  return Promise.all([miningInfoPromise])
+  .then(([miningInfo]) => {
+    return miningInfo
+  })
+}
 
+const getMinerInfo100FromRedis = () => {
+  const miningInfoPromise = redisGetAsync("miner_info100");
+  return Promise.all([miningInfoPromise])
+  .then(([miningInfo]) => {
+    return miningInfo
+  })
+}
 
 async function update() {
   console.log("update")
   let result = await getMinerInfo()
   //console.log(result)
   //console.log(JSON.stringify(result.mining_info))
-
+  let btc = 50000
+  let stx = 1.2
+  let gas = 56000
+  for (let item in result.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
+    //console.log(rr)
+    result.miner_info[item].RR = rr.toFixed(3);
+  }
   client.set("mining_info", JSON.stringify(result.mining_info))
   client.set("miner_info", JSON.stringify(result.miner_info))
   let blockcommits = handleBlockCommitInfo(result.block_commits)
@@ -83,6 +105,8 @@ async function update() {
   //console.log("in2")
   return "ok"
 }
+
+
 
 app.get('/update', (req, res) => {
   update()
@@ -101,6 +125,8 @@ app.get('/mining_info', (req, res) => {
   )
 })
 
+
+
 app.get('/miner_info', (req, res) => {
   let latest = req.query.latest === undefined? undefined: req.query.latest;
   let page = req.query.page === undefined? undefined: req.query.page;
@@ -117,11 +143,38 @@ app.get('/miner_info', (req, res) => {
   )
 })
 
+async function updateRecent(){
+  console.log("udpate recent")
+  let block_info = await getBlockInfoFromRedis()
+  let block_info_JSON = JSON.parse(block_info)
+  let current_block_height = block_info_JSON.length;
+
+  let btc = 50000
+  let stx = 1.2
+  let gas = 56000
+
+  let result1000 = await getMinerInfo({startblock:current_block_height-1000, endblock:current_block_height})
+  for (let item in result1000.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result1000.miner_info[item]});
+    //console.log(rr)
+    result1000.miner_info[item].RR = rr.toFixed(3);
+  }
+
+  let result100 = await getMinerInfo({startblock:current_block_height-100, endblock:current_block_height})
+  for (let item in result100.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result100.miner_info[item]});
+    //console.log(rr)
+    result100.miner_info[item].RR = rr.toFixed(3);
+  }
+
+  client.set("miner_info1000", JSON.stringify(result1000.miner_info))
+  client.set("miner_info100", JSON.stringify(result100.miner_info))
+}
+
 app.get('/miner_info_rt', async (req, res) => {
   let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
-  //console.log(result.miner_info)
   let btc = 50000
-  let stx = 0.75
+  let stx = 1.2
   let gas = 56000
   if (req.query.btc!=undefined && req.query.stx!=undefined){
     btc = req.query.btc
@@ -130,6 +183,7 @@ app.get('/miner_info_rt', async (req, res) => {
   if (req.query.gas!=undefined){
     gas = req.query.gas
   }
+  
   for (let item in result.miner_info){
     let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
     //console.log(rr)
@@ -169,159 +223,6 @@ app.get('/stagedb', (req, res) => {
   res.send(r)
 })
 
-
-app.get('/snapshotIntegrate', (req, res) => {
-  let requestList = ['http://47.242.239.96:8889/snapshot']
-  
-  let requestSnapshot = new Promise ((resolve, reject)=>{
-    console.log("requesting SnapshotBody =============================================")
-    request.get(requestList[0], function (err, response, body) {
-      if (err) {
-          console.error(err)
-      }
-      else{
-        try {
-          console.log("requestSnapshotBody--------------------------:" , body)
-          let result = JSON.parse(body)
-          
-          //console.log(result[0].block_height, result[0].winning_block_txid)
-          resolve(result)
-        }
-        catch(error){
-          resolve([{block_height: 0, winning_block_txid: 0}])
-        }
-      }
-    })
-  })
-
-  let requestLatestBlock = new Promise ((resolve, reject)=>{
-    console.log("requesting LatestBlock =============================================")
-    var options = {
-      'method': 'POST',
-      'url': 'http://daemontech2:daemontech2@47.242.239.96:8332',
-      'headers': {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ "id": "stacks", "jsonrpc": "2.0", "method": "getblockchaininfo", "params": [] })
-    };
-
-    request(options, function (error, response, body) {
-      if (error) {
-        return { status: 500 };
-      }
-      else{
-        try {
-          console.log("requestLatestBlockBody------------------------------:" , body)
-          const info = JSON.parse(body)
-          //console.log('height:', info.result.blocks);
-          //console.log('bestblockhash:', info.result.bestblockhash);
-          //console.log("requestLatestBlock:" , {height: info.result.blocks, bestblockhash: info.result.bestblockhash})
-          resolve({height: info.result.blocks, bestblockhash: info.result.bestblockhash})  
-        }
-        catch (error){
-          resolve({height: 999999999, bestblockhash: 0})  
-        }
-      }
-    });
-
-  });
-
-
-  return Promise.all([requestSnapshot, requestLatestBlock])
-  .then(([snapshot, latestBlock]) => {
-    //console.log(snapshot, latestBlock)
-    //block_height
-    //parent_block
-    //parent_txoff
-    //console.log(snapshot[0].block_height, latestBlock.height)
-    if (snapshot[0].block_height < latestBlock.height) 
-      return res.send({status: 500, block_height: 0, parent_block: 0 , parent_txoff: 0, msg: "snapshot is lower than latestblockheight"})
-    else{
-      // latestBlock.hash
-      // https://blockchain.info/rawblock/ + latestBlock.hash
-      // snapshot.winning_block_txid
-      
-      return new Promise ((resolve, reject)=>{
-        
-        //console.log("Hash在这里：", latestBlock.bestblockhash)
-        let winning_block_txid = snapshot.slice(-1)[0].winning_block_txid
-        let winning_block_hash = snapshot.slice(-1)[0].burn_header_hash
-        let winning_block_height = snapshot.slice(-1)[0].block_height
-        //console.log("winning_block_txid:", winning_block_txid)
-
-        var options = { 
-          "method": 'POST',
-          "url": 'http://daemontech2:daemontech2@47.242.239.96:8332',
-          "body": JSON.stringify({ "id": 'stacks', "jsonrpc": '2.0', "method": 'getblock', "params": [ winning_block_hash ] }),
-          'headers': {
-            'Content-Type': 'application/json'
-          },
-        };
-
-        console.log("requesting RawBlock ===================================================")
-        request(options, function (error, response, body) {
-          if (error) {
-              console.error(error)
-          }
-          else{
-              //console.log(body)
-              //console.log("no error")
-              let index = -1
-              try {
-              
-                let rawBlock = JSON.parse(body);
-                
-                //console.log(rawBlock)
-                
-                for (let item in rawBlock.result.tx){
-                  //console.log(item)
-                  //console.log(item, rawBlock.result.tx[item].hash, snapshot.slice(-1)[0].winning_block_txid)     
-                  
-                  if (rawBlock.result.tx[item] == winning_block_txid){
-                      index = item
-                      console.log("找到了：", item)
-                  }
-                  
-                }
-              }
-              catch (error){
-                console.log("error when parsing, keep going")
-                index = -1
-              }
-              
-              
-              console.log({ 
-                              block_height: latestBlock.height, 
-                              parent_block: winning_block_height, 
-                              parent_txoff: parseInt(index)
-                            })
-              if (index === -1){
-                resolve(res.send({ 
-                  status: 500,
-                  block_height: latestBlock.height, 
-                  parent_block: winning_block_height, 
-                  parent_txoff: -1
-                }))
-              }
-              else{
-                resolve(res.send({ 
-                  status: 200,
-                  block_height: latestBlock.height, 
-                  parent_block: winning_block_height, 
-                  parent_txoff: parseInt(index)
-                }))
-              }     
-          }
-        })
-      })
-    } 
-  })
-})
-
-
-setInterval(function(){
-  update();
-}, 60000);
 
 
 app.get('/getLatestStage', (req, res) => {
@@ -373,9 +274,57 @@ app.get('/blockchaininfo', (req, res) => {
   res.send(r)
 })
 
+
+
+async function updateMonitorData() {
+  console.log("updateMonitorData")
+  //let result = await getMinerInfo()
+  /*
+  client.set("mining_info", JSON.stringify(result.mining_info))
+  client.set("miner_info", JSON.stringify(result.miner_info))
+  let blockcommits = handleBlockCommitInfo(result.block_commits)
+  client.set("block_info", JSON.stringify(blockcommits))
+  */
+  return "ok"
+}
+
+
+app.get('/monitorIntegrate', async (req, res) => {
+  let mining_info = await getMiningInfoFromRedis();
+  let block_info = await getBlockInfoFromRedis();
+  let miner_info = await getMinerInfoFromRedis();
+  let miner_info1000 = await getMinerInfo1000FromRedis();
+  let miner_info100 = await getMinerInfo100FromRedis();
+  
+  let miner_info_JSON = JSON.parse(miner_info);
+  let miner_info1000_JSON = JSON.parse(miner_info1000);
+  let miner_info100_JSON = JSON.parse(miner_info100);
+  let mining_info_JSON = JSON.parse(mining_info);
+  let block_info_JSON = JSON.parse(block_info);
+  let mmData = packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info_JSON, miner_info1000_JSON, miner_info100_JSON );
+  //console.log(mmData)
+
+
+  //console.log(result)
+  res.send(mmData)
+})
+
+
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
 })
 
 //update()
-
+/*
+setInterval(function(){
+  update();
+}, 60000);
+*/
+/*
+setInterval(function(){
+  updateMonitorData();
+}, 300000);
+*/
+//update();
+//updateMonitorData();
+//updateRecent()

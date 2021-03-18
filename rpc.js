@@ -452,7 +452,7 @@ export async function getMinerInfo(param) {
     stacks_block_results.push(stacks_block_result)
   }
 
-  console.log("Stacks Chain Height:", stacks_blocks_by_height.length)
+  console.log("Stacks Chain Length:", stacks_blocks_by_height.length)
   return {miner_info: miners_result, mining_info: stacks_block_results, block_commits: blocks_commit_info}
 }
 

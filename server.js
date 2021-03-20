@@ -1,9 +1,13 @@
 import express from 'express';
-import { getMinerInfo, handleBlockCommitInfo } from './rpc.js'
+import { getMinerInfo, handleBlockCommitInfo, latestSnapshot, getblockchaininfo, latest3Snapshot, latest3StagingBlock, getLatestStage, getMiningStatus, setMiningStatus } from './rpc.js'
+import { packMiningMonitorData } from "./mining_monitor_rpc.js"
 import heapdump from 'heapdump';
 import redis from "redis"
 import { promisify }  from "util"
 import path from 'path';
+import request from "request";
+import {computeRR} from './utils.js'
+
 let clientConfig = {};
 
 if (process.env.NODE_ENV === "production") {
@@ -25,28 +29,8 @@ client.on("error", function(error) {
 
 
 const app = express()
-const port = 8887
+const port = 8889
 
-const root = ''
-const data_root_path = `${root}${process.argv[3] || process.argv[2]}`
-const use_txs = process.argv[2] === '-t'
-
-const getRedisData = () => {
-  const miningInfoPromise = redisGetAsync("mining_info");
-  const minerInfoPromise = redisGetAsync("miner_info");
-  return Promise.all([miningInfoPromise, minerInfoPromise])
-  .then(([miningInfo, minerInfo]) => {
-    return { miningInfo:miningInfo, minerInfo:minerInfo }
-  })
-}
-
-const getBlockCommitsData = () => {
-  const BlockCommitsPromise = redisGetAsync("block_commits_info");
-  return Promise.all([BlockCommitsPromise])
-  .then(([BlockCommitsInfo]) => {
-    return { block_commits_info:BlockCommitsInfo}
-  })
-}
 
 app.all("*", function (req, res, next) {
   res.header("Access-Control-Allow-Origin", req.headers.origin || '*');
@@ -60,54 +44,154 @@ app.all("*", function (req, res, next) {
   }
 })
 
+const getMiningInfoFromRedis = () => {
+  const miningInfoPromise = redisGetAsync("mining_info");
+  return Promise.all([miningInfoPromise])
+  .then(([miningInfo]) => {
+    return miningInfo
+  })
+}
+
+const getMinerInfoFromRedis = () => {
+  const minerInfoPromise = redisGetAsync("miner_info");
+  return Promise.all([minerInfoPromise])
+  .then(([minerInfo]) => {
+    return minerInfo 
+  })
+}
+
+const getBlockInfoFromRedis = () => {
+  const blockInfoPromise = redisGetAsync("block_info");
+  return Promise.all([blockInfoPromise])
+  .then(([blockInfo]) => {
+    return blockInfo
+  })
+}
+
+const getMinerInfo1000FromRedis = () => {
+  const miningInfoPromise = redisGetAsync("miner_info1000");
+  return Promise.all([miningInfoPromise])
+  .then(([miningInfo]) => {
+    return miningInfo
+  })
+}
+
+const getMinerInfo100FromRedis = () => {
+  const miningInfoPromise = redisGetAsync("miner_info100");
+  return Promise.all([miningInfoPromise])
+  .then(([miningInfo]) => {
+    return miningInfo
+  })
+}
+
 async function update() {
   console.log("update")
   let result = await getMinerInfo()
-  
+  //console.log(result)
   //console.log(JSON.stringify(result.mining_info))
   //console.log("in")
+  let btc = 50000
+  let stx = 1.2
+  let gas = 56000
+  for (let item in result.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
+    //console.log(rr)
+    result.miner_info[item].RR = rr.toFixed(3);
+  }
   client.set("mining_info", JSON.stringify(result.mining_info))
   client.set("miner_info", JSON.stringify(result.miner_info))
   let blockcommits = handleBlockCommitInfo(result.block_commits)
-  console.log(blockcommits)
-  client.set("block_commits_info", JSON.stringify(blockcommits))
+  //console.log(blockcommits)
+  client.set("block_info", JSON.stringify(blockcommits))
   //console.log("in2")
   return "ok"
 }
 
-app.get('/update', (req, res) => {
 
-  client.set("mining_info", "abc")
+
+app.get('/update', (req, res) => {
+  update()
   res.json("ok")
 })
 
-app.get('/get', (req, res) => {
-  client.set("mining_info", '{"name": "abc"}')
-  getRedisData().then(
-    (data) => {
-      console.log(data)
-      let resp = {miner_info: JSON.parse(data.minerInfo), mining_info: JSON.parse(data.miningInfo)}
-      return res.send(resp)
-    }
-  )
-})
 
 app.get('/mining_info', (req, res) => {
-  getRedisData().then(
+  let latest = req.query.latest === undefined? undefined: req.query.latest;
+  getMiningInfoFromRedis().then(
     (data) => {
-      let resp = {mining_info: JSON.parse(data.miningInfo)}
+      let resp = JSON.parse(data)
+      if (latest) return res.send(resp.slice(0, latest))
       return res.send(resp)
     }
   )
 })
 
+
+
 app.get('/miner_info', (req, res) => {
-   getRedisData().then(
-     (data) => {
-	let resp = {miner_info: JSON.parse(data.minerInfo)}
-	return res.send(resp)
-     }
-   )
+  let latest = req.query.latest === undefined? undefined: req.query.latest;
+  let page = req.query.page === undefined? undefined: req.query.page;
+  let size = req.query.size === undefined? undefined: req.query.size;
+  getMinerInfoFromRedis().then(
+    (data) => {
+      
+      let resp = JSON.parse(data)
+      if (latest) 
+          return res.send({'data': resp.slice(-latest - 1), 'total': resp.length});
+      if (page && size) 
+          return res.send({'data':resp.slice(size*(page-1), size*page), 'total':resp.length}); 
+      return res.send({'data': resp, 'total': resp.length})
+    }
+  )
+})
+
+async function updateRecent(){
+  console.log("udpate recent")
+  let block_info = await getBlockInfoFromRedis()
+  let block_info_JSON = JSON.parse(block_info)
+  let current_block_height = block_info_JSON.length;
+
+  let btc = 50000
+  let stx = 1.2
+  let gas = 56000
+
+  let result1000 = await getMinerInfo({startblock:current_block_height-1000, endblock:current_block_height})
+  for (let item in result1000.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result1000.miner_info[item]});
+    //console.log(rr)
+    result1000.miner_info[item].RR = rr.toFixed(3);
+  }
+
+  let result100 = await getMinerInfo({startblock:current_block_height-100, endblock:current_block_height})
+  for (let item in result100.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result100.miner_info[item]});
+    //console.log(rr)
+    result100.miner_info[item].RR = rr.toFixed(3);
+  }
+
+  client.set("miner_info1000", JSON.stringify(result1000.miner_info))
+  client.set("miner_info100", JSON.stringify(result100.miner_info))
+}
+
+app.get('/miner_info_rt', async (req, res) => {
+  let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
+  let btc = 50000
+  let stx = 1.2
+  let gas = 56000
+  if (req.query.btc!=undefined && req.query.stx!=undefined){
+    btc = req.query.btc
+    stx = req.query.stx
+  }
+  if (req.query.gas!=undefined){
+    gas = req.query.gas
+  }
+  
+  for (let item in result.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
+    //console.log(rr)
+    result.miner_info[item].RR = rr.toFixed(3);
+  }
+  res.send(result.miner_info)
 })
 
 app.get('/block_info', (req, res) => {
@@ -115,28 +199,134 @@ app.get('/block_info', (req, res) => {
   let start = req.query.start === undefined? 1 : req.query.start;
   let end = req.query.end === undefined? 999999 : req.query.end;
   let latest = req.query.latest === undefined? undefined: req.query.latest;
-  getBlockCommitsData().then(
+  getBlockInfoFromRedis().then(
     (data) => {
-      let resp = JSON.parse(data.block_commits_info)
-      console.log(typeof(resp))
-      if (latest) return res.send(resp.slice(-latest - 1))
-      console.log("path:", path.resolve(''))
-
-     // return res.sendFile(path.resolve('')+ '/index.html')
+      let resp = JSON.parse(data)
+      if (latest) 
+          return res.send(resp.slice(-latest - 1))
       return res.send(resp.slice(start - 1, end))
     }
   )
 })
 
-setInterval(function(){
-  update();
-}, 60000);
 
+app.get('/snapshot', (req, res) => {
+  let r = latestSnapshot()
+  res.send(r)
+})
+
+app.get('/snapshot3', (req, res) => {
+  let r = latest3Snapshot()
+  res.send(r)
+})
+
+app.get('/stagedb', (req, res) => {
+  let r = latest3StagingBlock()
+  res.send(r)
+})
+
+
+
+app.get('/getLatestStage', (req, res) => {
+  let r = getLatestStage()
+  res.send(r)
+})
+
+app.get('/isStagedbSynced', (req, res) => {
+  let localStage = getLatestStage()
+  let remoteStagePromise = new Promise ((resolve, reject)=>{
+    console.log("requesting getLatestStage =============================================")
+    request.get("http://47.242.239.96:8889/getLatestStage", function (err, response, body) {
+      if (err) {
+          console.error(err)
+      }
+      else{
+        try {
+          console.log("requesting getLatestStage body--------------------------:" , body)
+          let result = JSON.parse(body)
+          //console.log(result)
+          //console.log(result[0].block_height, result[0].winning_block_txid)
+          resolve(result)
+        }
+        catch(error){
+          resolve({ height: 0 })
+        }
+      }
+    })
+  })
+
+  return Promise.all([remoteStagePromise]).then(([remoteStage])=>{
+    console.log(localStage, remoteStage)
+    console.log(localStage.height, remoteStage.height)
+    if (localStage === undefined || remoteStage === undefined || localStage.height === undefined || remoteStage.height === undefined)
+      return res.send({status: 500, canMine: false})
+    if (localStage.height === remoteStage.height)
+      return res.send({status: 200, canMine: true})
+    else
+      return res.send({status: 200, canMine: false})
+  })
+  
+})
+
+
+
+
+app.get('/blockchaininfo', (req, res) => {
+  let r = getblockchaininfo()
+  res.send(r)
+})
+
+
+
+async function updateMonitorData() {
+  console.log("updateMonitorData")
+  //let result = await getMinerInfo()
+  /*
+  client.set("mining_info", JSON.stringify(result.mining_info))
+  client.set("miner_info", JSON.stringify(result.miner_info))
+  let blockcommits = handleBlockCommitInfo(result.block_commits)
+  client.set("block_info", JSON.stringify(blockcommits))
+  */
+  return "ok"
+}
+
+
+app.get('/monitorIntegrate', async (req, res) => {
+  let mining_info = await getMiningInfoFromRedis();
+  let block_info = await getBlockInfoFromRedis();
+  let miner_info = await getMinerInfoFromRedis();
+  let miner_info1000 = await getMinerInfo1000FromRedis();
+  let miner_info100 = await getMinerInfo100FromRedis();
+  
+  let miner_info_JSON = JSON.parse(miner_info);
+  let miner_info1000_JSON = JSON.parse(miner_info1000);
+  let miner_info100_JSON = JSON.parse(miner_info100);
+  let mining_info_JSON = JSON.parse(mining_info);
+  let block_info_JSON = JSON.parse(block_info);
+  let mmData = packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info_JSON, miner_info1000_JSON, miner_info100_JSON );
+  //console.log(mmData)
+
+
+  //console.log(result)
+  res.send(mmData)
+})
 
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
 })
 
-update()
+//update()
 
+setInterval(function(){
+  update();
+}, 120000);
+
+
+setInterval(function(){
+  updateRecent()
+}, 600000)
+
+update();
+updateMonitorData();
+updateRecent()

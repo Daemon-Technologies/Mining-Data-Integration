@@ -84,6 +84,14 @@ const getMinerInfo100FromRedis = () => {
   })
 }
 
+const getBtcHeightFromRedis = () => {
+  const miningInfoPromise = redisGetAsync("btc_height");
+  return Promise.all([miningInfoPromise])
+  .then(([miningInfo]) => {
+    return miningInfo
+  })
+}
+
 async function update() {
   console.log("update")
   let result = await getMinerInfo()
@@ -172,6 +180,30 @@ async function updateRecent(){
   client.set("miner_info1000", JSON.stringify(result1000.miner_info))
   client.set("miner_info100", JSON.stringify(result100.miner_info))
 }
+
+async function updateBitcoinInfo() {
+  console.log("update Bitcoin Info")
+  let url = "https://chain.api.btc.com/v3/block/latest";
+  request.get(url, function (err, response, body) {
+    if (err) {
+        console.error(err)
+    }
+    else{
+      try {
+        let result = JSON.parse(body)
+        //console.log(result)
+        //console.log(result[0].block_height, result[0].winning_block_txid)
+        //console.log(result)
+        client.set("btc_height", result.data.height)
+        return { height: result.data.height }
+      }
+      catch(error){
+        return { height: 0 }
+      }
+    }
+  })
+}
+
 
 app.get('/miner_info_rt', async (req, res) => {
   let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
@@ -292,11 +324,13 @@ async function updateMonitorData() {
 
 
 app.get('/monitorIntegrate', async (req, res) => {
+
   let mining_info = await getMiningInfoFromRedis();
   let block_info = await getBlockInfoFromRedis();
   let miner_info = await getMinerInfoFromRedis();
   let miner_info1000 = await getMinerInfo1000FromRedis();
   let miner_info100 = await getMinerInfo100FromRedis();
+  let btc_height = await getBtcHeightFromRedis()
   
   let miner_info_JSON = JSON.parse(miner_info);
   let miner_info1000_JSON = JSON.parse(miner_info1000);
@@ -306,8 +340,8 @@ app.get('/monitorIntegrate', async (req, res) => {
   let mmData = packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info_JSON, miner_info1000_JSON, miner_info100_JSON );
   //console.log(mmData)
 
-
-  //console.log(result)
+  mmData.btc_height = btc_height
+  console.log(mmData.btc_height)
   res.send(mmData)
 })
 
@@ -317,7 +351,6 @@ app.listen(port, () => {
 })
 
 //update()
-
 setInterval(function(){
   update();
 }, 120000);
@@ -325,6 +358,7 @@ setInterval(function(){
 
 setInterval(function(){
   updateRecent()
+  updateBitcoinInfo()
 }, 600000)
 
 //update();

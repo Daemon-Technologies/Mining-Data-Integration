@@ -337,11 +337,9 @@ app.get('/monitorIntegrate', async (req, res) => {
   let miner_info100_JSON = JSON.parse(miner_info100);
   let mining_info_JSON = JSON.parse(mining_info);
   let block_info_JSON = JSON.parse(block_info);
-  let mmData = packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info_JSON, miner_info1000_JSON, miner_info100_JSON );
+  let mmData = packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info_JSON, miner_info1000_JSON, miner_info100_JSON, btc_height );
   //console.log(mmData)
 
-  mmData.btc_height = btc_height
-  console.log(mmData.btc_height)
   res.send(mmData)
 })
 

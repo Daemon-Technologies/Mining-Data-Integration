@@ -1,4 +1,4 @@
-function packCurrentStatus(block_info_JSON){
+function packCurrentStatus(block_info_JSON, btc_height){
     let current_block_height = block_info_JSON.length;
     let block_info20 = block_info_JSON.slice(-20)
     let burnFee20_arr = block_info20.map((value, index)=> { return value.sum_burn_fees })
@@ -11,7 +11,7 @@ function packCurrentStatus(block_info_JSON){
         current_block: {
             stacks_block_height: block_info_JSON[current_block_height-1].stacks_block_height,
             bitcoin_block: {
-                block_height: 654132,
+                block_height: btc_height,
                 timestamp: 1600000 
             }
         },
@@ -148,9 +148,9 @@ function packRR (miner_info, miner_info1000_JSON, miner_info100_JSON){
     }
 }
 
-export function packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info, miner_info1000_JSON, miner_info100_JSON){
+export function packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info, miner_info1000_JSON, miner_info100_JSON, btc_height){
     let result = {
-        currentStatus: packCurrentStatus(block_info_JSON),
+        currentStatus: packCurrentStatus(block_info_JSON, btc_height),
         minerTable: packMinerTable(block_info_JSON, mining_info_JSON),
         burnFeeArea: packBurnFeeArea(block_info_JSON),
         winnerPie:packWinnerPie(miner_info, miner_info1000_JSON, miner_info100_JSON),

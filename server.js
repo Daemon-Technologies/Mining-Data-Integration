@@ -327,6 +327,6 @@ setInterval(function(){
   updateRecent()
 }, 600000)
 
-update();
-updateMonitorData();
-updateRecent()
+//update();
+//updateMonitorData();
+//updateRecent()

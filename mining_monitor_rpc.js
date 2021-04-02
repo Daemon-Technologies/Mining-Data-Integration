@@ -75,13 +75,13 @@ function packBurnFeeArea(block_info_JSON){
         for (let index in data){
             let item = data[index]
             item.address = key;
-            if (item.height - data[index-1].height === 0) {
-                burnFeeArea[burnFeeArea.length - 1].burn_fee += item.burn_fee
+            if (index != 0 && item.height - data[index-1].height === 0) {
+                console.log("in:", index, item.height, burnFeeArea[burnFeeArea.length - 1].burn_fee, item.burn_fee);
+		burnFeeArea[burnFeeArea.length - 1].burn_fee = item.burn_fee
                 continue;
             }
             if (index != 0 && item.height-data[index-1].height > 1){
                 //console.log("in", item, data[index-1])
-
                 for (let i = data[index-1].height + 1; i < item.height; i++){
                     let missingItem = {}
                     missingItem.height = i;
@@ -113,7 +113,7 @@ function packBurnFeeArea(block_info_JSON){
 }
 
 function packWinnerPie (miner_info, miner_info1000_JSON, miner_info100_JSON){
-    console.log(miner_info)
+    //console.log(miner_info)
     return { 
         all: miner_info.map((value, index) => {
             return {
@@ -140,7 +140,7 @@ function packWinnerPie (miner_info, miner_info1000_JSON, miner_info100_JSON){
 }
 
 function packRR (miner_info, miner_info1000_JSON, miner_info100_JSON){
-    console.log(miner_info100_JSON)
+    //console.log(miner_info100_JSON)
     return { 
         all: [], 
         "r1000": [], 
@@ -156,6 +156,6 @@ export function packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_i
         winnerPie:packWinnerPie(miner_info, miner_info1000_JSON, miner_info100_JSON),
         rateOfReturn: packRR(miner_info, miner_info1000_JSON, miner_info100_JSON)
     }
-    console.log(result.winnerPie)
+    //console.log(result.winnerPie)
     return result;
 }

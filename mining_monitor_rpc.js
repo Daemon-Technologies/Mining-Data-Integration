@@ -76,7 +76,7 @@ function packBurnFeeArea(block_info_JSON){
             let item = data[index]
             item.address = key;
             if (index != 0 && item.height - data[index-1].height === 0) {
-                console.log("in:", index, item.height, burnFeeArea[burnFeeArea.length - 1].burn_fee, item.burn_fee);
+                //console.log("in:", index, item.height, burnFeeArea[burnFeeArea.length - 1].burn_fee, item.burn_fee);
 		burnFeeArea[burnFeeArea.length - 1].burn_fee = item.burn_fee
                 continue;
             }

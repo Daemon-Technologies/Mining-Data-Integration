@@ -181,9 +181,41 @@ async function updateRecent(){
   client.set("miner_info100", JSON.stringify(result100.miner_info))
 }
 
+async function updateTokenPrice() {
+  let url = "https://api.binance.com/api/v3/ticker/price?symbol=";
+  request.get(url+"STXUSDT", function(err, response, body){
+    if (err) {console.error(err)}
+    else {
+    	try {
+		let result = JSON.parse(body)
+		if (result!= null)
+			client.set("price_stx", result.price)
+		return { price: result.price }
+	}
+	catch(error){
+		return { price: 0 }
+	}
+    }
+  })
+  request.get(url+"BTCUSDT", function(err, response, body){
+    if (err) {console.error(err)}
+    else {
+	try {
+               let result = JSON.parse(body)
+               if (result!= null)
+                       client.set("price_btc", result.price)
+               return { price: result.price }
+	}
+	catch(error){
+		return { price: 0 }
+	}
+    }
+  })
+}
+
 async function updateBitcoinInfo() {
   console.log("update Bitcoin Info")
-  let url = "https://chain.api.btc.com/v3/block/latest";
+  let url = "https://blockchain.info/latestblock";
   request.get(url, function (err, response, body) {
     if (err) {
         console.error(err)
@@ -193,8 +225,9 @@ async function updateBitcoinInfo() {
         let result = JSON.parse(body)
         //console.log(result)
         //console.log(result[0].block_height, result[0].winning_block_txid)
-        //console.log(result)
-        client.set("btc_height", result.data.height)
+        console.log(result)
+	if (result!= null)
+        	client.set("btc_height", result.height)
         return { height: result.data.height }
       }
       catch(error){
@@ -362,3 +395,5 @@ setInterval(function(){
 //update();
 //updateMonitorData();
 //updateRecent()
+//updateBitcoinInfo()
+updateTokenPrice()

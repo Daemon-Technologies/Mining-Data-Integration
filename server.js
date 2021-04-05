@@ -69,59 +69,49 @@ const getBlockInfoFromRedis = () => {
 }
 
 const getMinerInfo1000FromRedis = () => {
-  const miningInfoPromise = redisGetAsync("miner_info1000");
-  return Promise.all([miningInfoPromise])
-  .then(([miningInfo]) => {
-    return miningInfo
+  const MinerInfo1000Promise = redisGetAsync("miner_info1000");
+  return Promise.all([MinerInfo1000Promise])
+  .then(([MinerInfo1000]) => {
+    return MinerInfo1000
   })
 }
 
 const getMinerInfo100FromRedis = () => {
-  const miningInfoPromise = redisGetAsync("miner_info100");
-  return Promise.all([miningInfoPromise])
-  .then(([miningInfo]) => {
-    return miningInfo
+  const MinerInfo100Promise = redisGetAsync("miner_info100");
+  return Promise.all([MinerInfo100Promise])
+  .then(([MinerInfo100]) => {
+    return MinerInfo100
   })
 }
 
 const getBtcHeightFromRedis = () => {
-  const miningInfoPromise = redisGetAsync("btc_height");
-  return Promise.all([miningInfoPromise])
-  .then(([miningInfo]) => {
-    return miningInfo
+  const btcHeightPromise = redisGetAsync("btc_height");
+  return Promise.all([btcHeightPromise])
+  .then(([btcHeightInfo]) => {
+    return btcHeightInfo
   })
 }
 
-async function update() {
-  console.log("update")
-  let result = await getMinerInfo()
-  //console.log(result)
-  //console.log(JSON.stringify(result.mining_info))
-  //console.log("in")
-  let btc = 50000
-  let stx = 1.2
-  let gas = 56000
-  for (let item in result.miner_info){
-    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
-    //console.log(rr)
-    result.miner_info[item].RR = rr.toFixed(3);
-  }
-  client.set("mining_info", JSON.stringify(result.mining_info))
-  client.set("miner_info", JSON.stringify(result.miner_info))
-  let blockcommits = handleBlockCommitInfo(result.block_commits)
-  //console.log(blockcommits)
-  client.set("block_info", JSON.stringify(blockcommits))
-  //console.log("in2")
-  return "ok"
+const getBtcPriceFromRedis = () => {
+  const priceBtcPromise = redisGetAsync("price_btc");
+  return Promise.all([priceBtcPromise])
+  .then(([priceBtcInfo]) => {
+    return priceBtcInfo
+  })
 }
 
-
+const getStxPriceFromRedis = () => {
+  const priceStxPromise = redisGetAsync("price_stx");
+  return Promise.all([priceStxPromise])
+  .then(([priceStxInfo]) => {
+    return priceStxInfo
+  })
+}
 
 app.get('/update', (req, res) => {
   update()
   res.json("ok")
 })
-
 
 app.get('/mining_info', (req, res) => {
   let latest = req.query.latest === undefined? undefined: req.query.latest;
@@ -133,8 +123,6 @@ app.get('/mining_info', (req, res) => {
     }
   )
 })
-
-
 
 app.get('/miner_info', (req, res) => {
   let latest = req.query.latest === undefined? undefined: req.query.latest;
@@ -152,91 +140,6 @@ app.get('/miner_info', (req, res) => {
     }
   )
 })
-
-async function updateRecent(){
-  console.log("udpate recent")
-  let block_info = await getBlockInfoFromRedis()
-  let block_info_JSON = JSON.parse(block_info)
-  let current_block_height = block_info_JSON.length;
-
-  let btc = 50000
-  let stx = 1.2
-  let gas = 56000
-
-  let result1000 = await getMinerInfo({startblock:current_block_height-1000, endblock:current_block_height})
-  for (let item in result1000.miner_info){
-    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result1000.miner_info[item]});
-    //console.log(rr)
-    result1000.miner_info[item].RR = rr.toFixed(3);
-  }
-
-  let result100 = await getMinerInfo({startblock:current_block_height-100, endblock:current_block_height})
-  for (let item in result100.miner_info){
-    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result100.miner_info[item]});
-    //console.log(rr)
-    result100.miner_info[item].RR = rr.toFixed(3);
-  }
-
-  client.set("miner_info1000", JSON.stringify(result1000.miner_info))
-  client.set("miner_info100", JSON.stringify(result100.miner_info))
-}
-
-async function updateTokenPrice() {
-  let url = "https://api.binance.com/api/v3/ticker/price?symbol=";
-  request.get(url+"STXUSDT", function(err, response, body){
-    if (err) {console.error(err)}
-    else {
-    	try {
-		let result = JSON.parse(body)
-		if (result!= null)
-			client.set("price_stx", result.price)
-		return { price: result.price }
-	}
-	catch(error){
-		return { price: 0 }
-	}
-    }
-  })
-  request.get(url+"BTCUSDT", function(err, response, body){
-    if (err) {console.error(err)}
-    else {
-	try {
-               let result = JSON.parse(body)
-               if (result!= null)
-                       client.set("price_btc", result.price)
-               return { price: result.price }
-	}
-	catch(error){
-		return { price: 0 }
-	}
-    }
-  })
-}
-
-async function updateBitcoinInfo() {
-  console.log("update Bitcoin Info")
-  let url = "https://blockchain.info/latestblock";
-  request.get(url, function (err, response, body) {
-    if (err) {
-        console.error(err)
-    }
-    else{
-      try {
-        let result = JSON.parse(body)
-        //console.log(result)
-        //console.log(result[0].block_height, result[0].winning_block_txid)
-        console.log(result)
-	if (result!= null)
-        	client.set("btc_height", result.height)
-        return { height: result.data.height }
-      }
-      catch(error){
-        return { height: 0 }
-      }
-    }
-  })
-}
-
 
 app.get('/miner_info_rt', async (req, res) => {
   let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
@@ -274,7 +177,6 @@ app.get('/block_info', (req, res) => {
   )
 })
 
-
 app.get('/snapshot', (req, res) => {
   let r = latestSnapshot()
   res.send(r)
@@ -289,8 +191,6 @@ app.get('/stagedb', (req, res) => {
   let r = latest3StagingBlock()
   res.send(r)
 })
-
-
 
 app.get('/getLatestStage', (req, res) => {
   let r = getLatestStage()
@@ -333,28 +233,10 @@ app.get('/isStagedbSynced', (req, res) => {
   
 })
 
-
-
-
 app.get('/blockchaininfo', (req, res) => {
   let r = getblockchaininfo()
   res.send(r)
 })
-
-
-
-async function updateMonitorData() {
-  console.log("updateMonitorData")
-  //let result = await getMinerInfo()
-  /*
-  client.set("mining_info", JSON.stringify(result.mining_info))
-  client.set("miner_info", JSON.stringify(result.miner_info))
-  let blockcommits = handleBlockCommitInfo(result.block_commits)
-  client.set("block_info", JSON.stringify(blockcommits))
-  */
-  return "ok"
-}
-
 
 app.get('/monitorIntegrate', async (req, res) => {
 
@@ -375,6 +257,117 @@ app.get('/monitorIntegrate', async (req, res) => {
 
   res.send(mmData)
 })
+
+async function update() {
+  console.log("update")
+  let result = await getMinerInfo()
+  //console.log(result)
+  //console.log(JSON.stringify(result.mining_info))
+  //console.log("in")
+  let btc = await getBtcPriceFromRedis()
+  let stx = await getStxPriceFromRedis()
+  console.log(btc, stx)
+  let gas = 56000
+  for (let item in result.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
+    //console.log(rr)
+    result.miner_info[item].RR = rr.toFixed(3);
+  }
+  client.set("mining_info", JSON.stringify(result.mining_info))
+  client.set("miner_info", JSON.stringify(result.miner_info))
+  let blockcommits = handleBlockCommitInfo(result.block_commits)
+  //console.log(blockcommits)
+  client.set("block_info", JSON.stringify(blockcommits))
+  //console.log("in2")
+  return "ok"
+}
+
+async function updateRecent(){
+  console.log("udpate recent")
+  let block_info = await getBlockInfoFromRedis()
+  let block_info_JSON = JSON.parse(block_info)
+  let current_block_height = block_info_JSON.length;
+
+  let btc = await getBtcPriceFromRedis()
+  let stx = await getStxPriceFromRedis()
+  console.log(btc, stx)
+  let gas = 56000
+
+  let result1000 = await getMinerInfo({startblock:current_block_height- 1000 + 1, endblock:current_block_height})
+  for (let item in result1000.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result1000.miner_info[item]});
+    //console.log(rr)
+    result1000.miner_info[item].RR = rr.toFixed(3);
+  }
+
+  let result100 = await getMinerInfo({startblock:current_block_height- 100 + 1, endblock:current_block_height})
+  for (let item in result100.miner_info){
+    let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result100.miner_info[item]});
+    //console.log(rr)
+    result100.miner_info[item].RR = rr.toFixed(3);
+  }
+
+  client.set("miner_info1000", JSON.stringify(result1000.miner_info))
+  client.set("miner_info100", JSON.stringify(result100.miner_info))
+}
+
+async function updateBitcoinInfo() {
+  console.log("update Bitcoin Info")
+  let url = "https://blockchain.info/latestblock";
+  request.get(url, function (err, response, body) {
+    if (err) {
+        console.error(err)
+    }
+    else{
+      try {
+        let result = JSON.parse(body)
+        //console.log(result)
+        //console.log(result[0].block_height, result[0].winning_block_txid)
+        console.log(result)
+	if (result!= null)
+        	client.set("btc_height", result.height)
+        return { height: result.data.height }
+      }
+      catch(error){
+        return { height: 0 }
+      }
+    }
+  })
+}
+
+async function updateTokenPrice() {
+  let url = "https://api.binance.com/api/v3/ticker/price?symbol=";
+  request.get(url+"STXUSDT", function(err, response, body){
+    if (err) {console.error(err)}
+    else {
+    	try {
+		    let result = JSON.parse(body)
+		    if (result!= null)
+		    	client.set("price_stx", result.price)
+		    return { price: result.price }
+	    }
+      catch(error){
+        return { price: 0 }
+      }
+    }
+  })
+  request.get(url+"BTCUSDT", function(err, response, body){
+    if (err) {console.error(err)}
+    else {
+	    try {
+        let result = JSON.parse(body)
+        if (result!= null)
+            client.set("price_btc", result.price)
+        return { price: result.price }
+	    }
+      catch(error){
+        return { price: 0 }
+      }
+    }
+  })
+}
+
+
 
 
 app.listen(port, () => {
@@ -397,3 +390,4 @@ setInterval(function(){
 //updateRecent()
 //updateBitcoinInfo()
 updateTokenPrice()
+update()

@@ -259,6 +259,7 @@ export async function getMinerInfo(param) {
             total_burn: 0,
             paid: 0,
             actual_win: 0,
+            actual_win_bonus: 0
           }
         }
         const miner = miners[block_commit.leader_key_address]
@@ -299,6 +300,8 @@ export async function getMinerInfo(param) {
       stacks_blocks_by_height.push(winner)
       const winning_miner = miners[winner.leader_key_address]
       winning_miner.actual_win++
+      if (stacks_block.block_height < 8387) 
+        winning_miner.actual_win_bonus++
       actual_win_total++
       // console.log(stacks_block.block_height)
       current_tip = stacks_block.parent_block
@@ -433,6 +436,7 @@ export async function getMinerInfo(param) {
       stx_address:miner_key,
       btc_address:c32.c32ToB58(miner_key),
       actual_win:miner.actual_win,
+      actual_win_bonus: miner.actual_win_bonus,
       total_win:miner.won,
       total_mined: miner.mined,
       miner_burned: miner.burned

@@ -143,16 +143,10 @@ app.get('/miner_info', (req, res) => {
 
 app.get('/miner_info_rt', async (req, res) => {
   let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
-  let btc = 50000
-  let stx = 1.2
-  let gas = 56000
-  if (req.query.btc!=undefined && req.query.stx!=undefined){
-    btc = req.query.btc
-    stx = req.query.stx
-  }
-  if (req.query.gas!=undefined){
-    gas = req.query.gas
-  }
+  let btc = await getBtcPriceFromRedis()
+  let stx = await getStxPriceFromRedis()
+  let gas = 350*100
+
   
   for (let item in result.miner_info){
     let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
@@ -270,7 +264,7 @@ async function update() {
   let btc = await getBtcPriceFromRedis()
   let stx = await getStxPriceFromRedis()
   console.log(btc, stx)
-  let gas = 56000
+  let gas = 350*100
   for (let item in result.miner_info){
     let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
     //console.log(rr)
@@ -294,7 +288,7 @@ async function updateRecent(){
   let btc = await getBtcPriceFromRedis()
   let stx = await getStxPriceFromRedis()
   console.log(btc, stx)
-  let gas = 56000
+  let gas = 350*100
 
   let result1000 = await getMinerInfo({startblock:current_block_height- 1000 + 1, endblock:current_block_height})
   for (let item in result1000.miner_info){

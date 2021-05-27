@@ -108,6 +108,14 @@ const getStxPriceFromRedis = () => {
   })
 }
 
+const getBtcGasFromRedis = () => {
+  const gasBtcPromise = redisGetAsync("gas_btc");
+  return Promise.all([gasBtcPromise])
+  .then(([gasBtcInfo]) => {
+    return gasBtcInfo
+  })
+}
+
 app.get('/update', (req, res) => {
   update()
   res.json("ok")
@@ -145,7 +153,7 @@ app.get('/miner_info_rt', async (req, res) => {
   let result = await getMinerInfo({startblock:req.query.startblock, endblock:req.query.endblock})
   let btc = await getBtcPriceFromRedis()
   let stx = await getStxPriceFromRedis()
-  let gas = 350*100
+  let gas = 350*150
 
   
   for (let item in result.miner_info){
@@ -251,20 +259,21 @@ app.get('/monitorIntegrate', async (req, res) => {
   
   let btc = await getBtcPriceFromRedis()
   let stx = await getStxPriceFromRedis()
-  mmData.price = {btc: btc, stx: stx};
+  let btc_gas = await getBtcGasFromRedis()
+  mmData.price = {btc: btc, stx: stx, btc_gas: btc_gas};
   res.send(mmData)
 })
 
 async function update() {
   console.log("update")
   let result = await getMinerInfo()
-  //console.log(result)
-  //console.log(JSON.stringify(result.mining_info))
-  //console.log("in")
   let btc = await getBtcPriceFromRedis()
   let stx = await getStxPriceFromRedis()
-  console.log(btc, stx)
-  let gas = 350*100
+  let btc_gas = await getBtcGasFromRedis()
+  console.log(btc, stx, btc_gas)
+  let gas = 350*btc_gas
+  console.log(gas)
+
   for (let item in result.miner_info){
     let rr = computeRR({btcPrice: btc, stxPrice: stx, gas: gas, minerData: result.miner_info[item]});
     //console.log(rr)
@@ -287,8 +296,9 @@ async function updateRecent(){
 
   let btc = await getBtcPriceFromRedis()
   let stx = await getStxPriceFromRedis()
-  console.log(btc, stx)
-  let gas = 350*100
+  let btc_gas = await getBtcGasFromRedis()
+  console.log(btc, stx, btc_gas)
+  let gas = 350*btc_gas
 
   let result1000 = await getMinerInfo({startblock:current_block_height- 1000 + 1, endblock:current_block_height})
   for (let item in result1000.miner_info){
@@ -369,6 +379,27 @@ async function updateTokenPrice() {
   })
 }
 
+async function updateBtcGas(){
+  let url = "https://bitcoinfees.earn.com/api/v1/fees/recommended";
+  request.get(url, function(err, resp, body){
+    if (err) {console.error(err)}
+    else{
+    	try{
+		let result = JSON.parse(body);
+		console.log(result);
+		console.log(parseInt(result.fastestFee))
+		if (result!=undefined && result.fastestFee!=undefined){
+			console.log("update btc gas:", parseInt(result.fastestFee) + 50)
+			client.set("gas_btc", parseInt(result.fastestFee) + 50)
+		}
+		return { gas_btc: parseInt(result.fastestFee) + 50 } 
+	}
+	catch(error){
+		return { gas_btc: 0 } 
+	}
+    }
+  })
+}
 
 
 
@@ -379,19 +410,22 @@ app.listen(port, () => {
 //update()
 setInterval(function(){
   update();
+  updateTokenPrice()
 }, 120000);
 
 
 setInterval(function(){
   updateRecent()
   updateBitcoinInfo()
+  updateBtcGas()
 }, 600000)
 
 //update();
 //updateMonitorData();
 //updateRecent()
 //updateBitcoinInfo()
+//updateBtcGas()
+//updateTokenPrice()
 //updateRecent()
-updateTokenPrice()
-//update()
-//updateRecent()
+update()
+updateRecent()

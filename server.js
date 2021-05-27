@@ -108,6 +108,22 @@ const getStxPriceFromRedis = () => {
   })
 }
 
+const getBtcTotalFromRedis = () => {
+  const priceBtcTotalPromise = redisGetAsync("btc_total");
+  return Promise.all([priceBtcTotalPromise])
+  .then(([priceBtcTotal]) => {
+    return priceBtcTotal
+  })
+}
+
+const getBtcHashPowerFromRedis = () => {
+  const btcHashPowerPromise = redisGetAsync("hash_power");
+  return Promise.all([btcHashPowerPromise])
+  .then(([btcHashPower]) => {
+    return btcHashPower
+  })
+}
+
 app.get('/update', (req, res) => {
   update()
   res.json("ok")
@@ -252,6 +268,12 @@ app.get('/monitorIntegrate', async (req, res) => {
   let btc = await getBtcPriceFromRedis()
   let stx = await getStxPriceFromRedis()
   mmData.price = {btc: btc, stx: stx};
+
+  let btc_total = await getBtcTotalFromRedis()
+  let btc_hash_power = await getBtcHashPowerFromRedis()
+  mmData.btc_total = btc_total
+  mmData.btc_hash_power = btc_hash_power
+
   res.send(mmData)
 })
 

@@ -248,7 +248,10 @@ app.get('/monitorIntegrate', async (req, res) => {
   let block_info_JSON = JSON.parse(block_info);
   let mmData = packMiningMonitorData(mining_info_JSON, block_info_JSON, miner_info_JSON, miner_info1000_JSON, miner_info100_JSON, btc_height );
   //console.log(mmData)
-
+  
+  let btc = await getBtcPriceFromRedis()
+  let stx = await getStxPriceFromRedis()
+  mmData.price = {btc: btc, stx: stx};
   res.send(mmData)
 })
 
@@ -336,8 +339,11 @@ async function updateTokenPrice() {
     else {
     	try {
 		    let result = JSON.parse(body)
-		    if (result!= null)
+		    console.log(result)
+		    if (result!= undefined && result.price!=undefined){
+		        console.log("update stx price:", result.price)
 		    	client.set("price_stx", result.price)
+		    }
 		    return { price: result.price }
 	    }
       catch(error){
@@ -350,8 +356,10 @@ async function updateTokenPrice() {
     else {
 	    try {
         let result = JSON.parse(body)
-        if (result!= null)
-            client.set("price_btc", result.price)
+        if (result!= undefined && result.price!=undefined){
+            	console.log("update btc price:", result.price)
+		client.set("price_btc", result.price)
+	}
         return { price: result.price }
 	    }
       catch(error){
@@ -403,6 +411,13 @@ setInterval(function(){
 //updateMonitorData();
 //updateRecent()
 //updateBitcoinInfo()
+<<<<<<< HEAD
 //updateTokenPrice()
 //update()
 updateHashPower()
+=======
+//updateRecent()
+updateTokenPrice()
+//update()
+//updateRecent()
+>>>>>>> 8593a62d71d506150f6ff986f9a0db1d5673403f

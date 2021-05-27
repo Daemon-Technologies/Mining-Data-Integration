@@ -313,11 +313,13 @@ async function updateBTCTotal(){
   console.log("udpate BTC Total")
   let miner_info = await getMinerInfoFromRedis()
   let miner_info_JSON = JSON.parse(miner_info)
-  
+  console.log(miner_info_JSON) 
   let result = 0;
   
-  for (let item in miner_info_JSON){
-    result += item.miner_burned
+  for (let i in miner_info_JSON){
+  	let item = miner_info_JSON[i]
+	console.log(item,item.miner_burned,result)
+	result += item.miner_burned
   }
 
   console.log(result)

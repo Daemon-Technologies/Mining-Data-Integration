@@ -411,13 +411,6 @@ setInterval(function(){
 //updateMonitorData();
 //updateRecent()
 //updateBitcoinInfo()
-<<<<<<< HEAD
 //updateTokenPrice()
 //update()
 updateHashPower()
-=======
-//updateRecent()
-updateTokenPrice()
-//update()
-//updateRecent()
->>>>>>> 8593a62d71d506150f6ff986f9a0db1d5673403f

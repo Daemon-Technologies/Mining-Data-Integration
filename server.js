@@ -308,6 +308,26 @@ async function updateRecent(){
   client.set("miner_info100", JSON.stringify(result100.miner_info))
 }
 
+
+async function updateBTCTotal(){
+  console.log("udpate BTC Total")
+  let miner_info = await getMinerInfoFromRedis()
+  let miner_info_JSON = JSON.parse(miner_info)
+  
+  let result = 0;
+  
+  for (let item in miner_info_JSON){
+    result += item.miner_burned
+  }
+
+  console.log(result)
+  result = (result / 1E8).toFixed(2)
+  
+  console.log(result)
+  client.set("btc_total", result)
+}
+
+
 async function updateBitcoinInfo() {
   console.log("update Bitcoin Info")
   let url = "https://blockchain.info/latestblock";
@@ -414,3 +434,4 @@ setInterval(function(){
 //updateTokenPrice()
 //update()
 updateHashPower()
+updateBTCTotal()

@@ -361,6 +361,26 @@ async function updateTokenPrice() {
   })
 }
 
+async function updateHashPower(){
+  let url = "https://api.blockchain.info/stats"
+  request.get(url, function(err, response, body){
+    if (err) {console.error(err)}
+    else {
+    	try {
+		    let result = JSON.parse(body)
+		    if (result!= null){
+          let tran = (result.hash_rate/1E9).toFixed(2)
+          console.log(tran)
+		    	client.set("hash_power", tran)
+        }
+		    return { hash_rate: result.hash_rate }
+	    }
+      catch(error){
+        return { hash_rate: 0 }
+      }
+    }
+  })
+}
 
 
 
@@ -383,5 +403,6 @@ setInterval(function(){
 //updateMonitorData();
 //updateRecent()
 //updateBitcoinInfo()
-updateTokenPrice()
-update()
+//updateTokenPrice()
+//update()
+updateHashPower()
